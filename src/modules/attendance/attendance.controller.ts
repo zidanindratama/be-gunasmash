@@ -5,14 +5,14 @@ import {
   memberCheckIn,
   sessionSummary,
   exportSessionCsv,
-} from './attendance.service';
-import { authGuard, rolesGuard } from '../common/auth/guards';
+} from './attendance.service.js';
+import { authGuard, rolesGuard } from '../common/auth/guards.js';
 import {
   AdminCheckInSchema,
   MemberCheckInSchema,
   SessionQuerySchema,
-} from '../common/validators/schemas';
-import { ok } from '../common/http/response';
+} from '../common/validators/schemas.js';
+import { ok } from '../common/http/response.js';
 
 export const attendanceRouter = Router();
 

@@ -3,9 +3,9 @@ import {
   isNowWithinAnnouncementWindow,
   normalizeLocalDate,
   parseTimeRangeToDates,
-} from '../common/time/announcement-window';
-import { prisma } from '../prisma/client';
-import { SessionQueryDto } from '../common/validators/schemas';
+} from '../common/time/announcement-window.js';
+import { prisma } from '../prisma/client.js';
+import type { SessionQueryDto } from '../common/validators/schemas.js';
 
 async function getOrCreateSession(announcementId: string, date?: Date) {
   const base = date ?? new Date();
@@ -68,9 +68,22 @@ export async function adminCheckIn(params: {
 
   let base = new Date();
   if (params.date) {
-    const [y, m, d] = params.date.split('-').map(Number);
-    base = new Date(y, (m || 1) - 1, d || 1);
+    const [yStr, mStr, dStr] = params.date.split('-');
+    const y = Number(yStr);
+    if (!Number.isFinite(y)) {
+      const err: any = new Error('Invalid date format. Use YYYY or YYYY-MM or YYYY-MM-DD');
+      err.status = 400;
+      throw err;
+    }
+    const m = mStr ? Number(mStr) : 1;
+    const d = dStr ? Number(dStr) : 1;
+
+    const mm = Math.min(Math.max(m, 1), 12) - 1;
+    const dd = Math.max(d, 1);
+
+    base = new Date(y, mm, dd);
   }
+
   const session = await getOrCreateSession(params.announcementId, base);
 
   const att = await prisma.attendance.upsert({
@@ -97,8 +110,18 @@ export async function sessionSummary(query: SessionQueryDto) {
 
   let base = new Date();
   if (query.date) {
-    const [y, m, d] = query.date.split('-').map(Number);
-    base = new Date(y, (m || 1) - 1, d || 1);
+    const [yStr, mStr, dStr] = query.date.split('-');
+    const y = Number(yStr);
+    if (!Number.isFinite(y)) {
+      const err: any = new Error('Invalid date format. Use YYYY or YYYY-MM or YYYY-MM-DD');
+      err.status = 400;
+      throw err;
+    }
+    const m = mStr ? Number(mStr) : 1;
+    const d = dStr ? Number(dStr) : 1;
+    const mm = Math.min(Math.max(m, 1), 12) - 1;
+    const dd = Math.max(d, 1);
+    base = new Date(y, mm, dd);
   }
 
   const sessionDate = normalizeLocalDate(base);
@@ -115,7 +138,7 @@ export async function sessionSummary(query: SessionQueryDto) {
   const skip = (page - 1) * limit;
 
   const presentUsers = await prisma.user.findMany({
-    where: { id: { in: Array.from(presentIds) as string[] } },
+    where: { id: { in: Array.from(presentIds) } },
     select: { id: true, name: true, email: true },
     skip,
     take: limit,
@@ -123,7 +146,7 @@ export async function sessionSummary(query: SessionQueryDto) {
   });
 
   const absentUsers = await prisma.user.findMany({
-    where: { role: 'MEMBER', id: { notIn: Array.from(presentIds) as string[] } },
+    where: { role: 'MEMBER', id: { notIn: Array.from(presentIds) } },
     select: { id: true, name: true, email: true },
     skip,
     take: limit,

@@ -1,6 +1,6 @@
 import cors from 'cors';
 
-import { env } from './env';
+import { env } from './env.js';
 
 const list = env.CORS_WHITELIST.split(',').map((d) => d.trim());
 

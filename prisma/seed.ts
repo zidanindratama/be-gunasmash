@@ -1,7 +1,7 @@
 import 'dotenv/config';
-import { PrismaClient, AttendanceStatus, Role } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
 import { faker } from '@faker-js/faker';
+import { PrismaClient, AttendanceStatus } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 import type { Role as RoleType } from '@prisma/client';
 
@@ -39,7 +39,7 @@ function uniqueSlug(base: string) {
 }
 
 function toTitleCase(s: string) {
-  return s.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1));
+  return s.replace(/\w\S*/g, (w) => (w[0]?.toUpperCase() ?? '') + w.slice(1));
 }
 
 function pad(n: number) {

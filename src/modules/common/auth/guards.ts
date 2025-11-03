@@ -1,7 +1,6 @@
-import { verifyAccess } from './jwt';
+import { verifyAccess } from './jwt.js';
 
 import type { NextFunction, Request, Response } from 'express';
-
 
 export function authGuard(req: Request, res: Response, next: NextFunction) {
   const h = req.headers.authorization || '';

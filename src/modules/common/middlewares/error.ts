@@ -1,7 +1,6 @@
-import { fail } from '../http/response';
+import { fail } from '../http/response.js';
 
 import type { NextFunction, Request, Response } from 'express';
-
 
 export function notFound(_req: Request, res: Response) {
   res.status(404).json(fail('Not Found'));

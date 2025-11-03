@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { ok } from '../common/http/response';
-import { getAttendanceStatsBySession, getGlobalStats } from './stats.service';
 import { ZodError } from 'zod';
-import { authGuard, rolesGuard } from '../common/auth/guards';
-import { AttendanceStatsQuerySchema } from '../common/validators/schemas';
+import { getAttendanceStatsBySession, getGlobalStats } from './stats.service.js';
+import { ok } from '../common/http/response.js';
+import { authGuard, rolesGuard } from '../common/auth/guards.js';
+import { AttendanceStatsQuerySchema } from '../common/validators/schemas.js';
 
 export const statsRouter = Router();
 

@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
 
-import { authGuard } from '../common/auth/guards';
-import { ok } from '../common/http/response';
-import { uploadImage } from '../common/upload/cloudinary';
+import { authGuard } from '../common/auth/guards.js';
+import { ok } from '../common/http/response.js';
+import { uploadImage } from '../common/upload/cloudinary.js';
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });

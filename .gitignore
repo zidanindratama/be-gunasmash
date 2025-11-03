@@ -60,3 +60,5 @@ Thumbs.db
 # Deployment Artifacts
 # ======================
 .vercel/
+
+.vercel

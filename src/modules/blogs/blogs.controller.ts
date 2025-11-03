@@ -1,9 +1,9 @@
 import { Router } from 'express';
 
-import { createBlog, getBlog, listBlogs, removeBlog, updateBlog } from './blogs.service';
-import { authGuard, rolesGuard } from '../common/auth/guards';
-import { ok } from '../common/http/response';
-import { BlogSchema } from '../common/validators/schemas';
+import { createBlog, getBlog, listBlogs, removeBlog, updateBlog } from './blogs.service.js';
+import { authGuard, rolesGuard } from '../common/auth/guards.js';
+import { ok } from '../common/http/response.js';
+import { BlogSchema } from '../common/validators/schemas.js';
 
 export const blogsRouter = Router();
 
@@ -38,7 +38,7 @@ blogsRouter.post('/', authGuard, rolesGuard(['ADMIN']), async (req, res, next) =
 blogsRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
     const dto = BlogSchema.partial().parse(req.body);
-    const data = await updateBlog(req.params.id, dto);
+    const data = await updateBlog(req.params.id as string, dto);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -47,7 +47,7 @@ blogsRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, nex
 
 blogsRouter.delete('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await removeBlog(req.params.id);
+    const data = await removeBlog(req.params.id as string);
     res.json(ok(data));
   } catch (e) {
     next(e);

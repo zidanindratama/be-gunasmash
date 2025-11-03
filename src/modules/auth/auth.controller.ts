@@ -1,12 +1,12 @@
 import { Router } from 'express';
 
-import { signUp, issueTokens } from './auth.service';
-import { passport } from './passport-local';
-import { authGuard } from '../common/auth/guards';
-import { verifyRefresh } from '../common/auth/jwt';
-import { ok } from '../common/http/response';
-import { SignInSchema, SignUpSchema } from '../common/validators/schemas';
-import { prisma } from '../prisma/client';
+import { signUp, issueTokens } from './auth.service.js';
+import { passport } from './passport-local.js';
+import { authGuard } from '../common/auth/guards.js';
+import { verifyRefresh } from '../common/auth/jwt.js';
+import { ok } from '../common/http/response.js';
+import { SignInSchema, SignUpSchema } from '../common/validators/schemas.js';
+import { prisma } from '../prisma/client.js';
 
 type Role = 'ADMIN' | 'MEMBER';
 

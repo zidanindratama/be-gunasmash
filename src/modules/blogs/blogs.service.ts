@@ -1,7 +1,7 @@
-import { parseListQuery, shapeList } from '../common/utils/query';
-import { prisma } from '../prisma/client';
-
 import type { Prisma } from '@prisma/client';
+
+import { parseListQuery, shapeList } from '../common/utils/query.js';
+import { prisma } from '../prisma/client.js';
 
 export async function listBlogs(q: any) {
   const { page, limit, skip, search, orderBy, where } = parseListQuery(q);

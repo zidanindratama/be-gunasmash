@@ -4,12 +4,11 @@ import csv from 'fast-csv';
 import { Parser } from 'json2csv';
 import multer from 'multer';
 
-import { listUsers, getUser, updateUserRole, removeUser } from './users.service';
-import { authGuard, rolesGuard } from '../common/auth/guards';
-import { ok } from '../common/http/response';
-import { PromoteSchema } from '../common/validators/schemas';
-import { prisma } from '../prisma/client';
-
+import { listUsers, getUser, updateUserRole, removeUser } from './users.service.js';
+import { authGuard, rolesGuard } from '../common/auth/guards.js';
+import { ok } from '../common/http/response.js';
+import { PromoteSchema } from '../common/validators/schemas.js';
+import { prisma } from '../prisma/client.js';
 
 export const usersRouter = Router();
 
@@ -24,7 +23,7 @@ usersRouter.get('/', authGuard, rolesGuard(['ADMIN']), async (req, res, next) =>
 
 usersRouter.get('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await getUser(req.params.id);
+    const data = await getUser(req.params.id as string);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -34,7 +33,7 @@ usersRouter.get('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next)
 usersRouter.patch('/:id/role', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
     const dto = PromoteSchema.parse(req.body);
-    const data = await updateUserRole(req.params.id, dto.role);
+    const data = await updateUserRole(req.params.id as string, dto.role);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -43,7 +42,7 @@ usersRouter.patch('/:id/role', authGuard, rolesGuard(['ADMIN']), async (req, res
 
 usersRouter.delete('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await removeUser(req.params.id);
+    const data = await removeUser(req.params.id as string);
     res.json(ok(data));
   } catch (e) {
     next(e);
