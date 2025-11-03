@@ -336,8 +336,9 @@ npm run db:gen
 
 **Muhamad Zidan Indratama**
 Full-Stack Web Developer — Universitas Gunadarma
-📧 [zidanindratama03@gmail.com](mailto:zidanindratama03@gmail.com)
-🌐 [zidanindratama.vercel.app](https://zidanindratama.vercel.app)
+
+- 📧 [zidanindratama03@gmail.com](mailto:zidanindratama03@gmail.com)
+- 🌐 [zidanindratama.vercel.app](https://zidanindratama.vercel.app)
 
 ---
 
