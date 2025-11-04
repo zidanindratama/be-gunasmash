@@ -4,7 +4,7 @@ import csv from 'fast-csv';
 import { Parser } from 'json2csv';
 import multer from 'multer';
 
-import { listUsers, getUser, updateUserRole, removeUser } from './users.service.js';
+import { listUsers, getUser, updateUserRole, removeUserAuto } from './users.service.js';
 import { authGuard, rolesGuard } from '../common/auth/guards.js';
 import { ok } from '../common/http/response.js';
 import { PromoteSchema } from '../common/validators/schemas.js';
@@ -42,9 +42,17 @@ usersRouter.patch('/:id/role', authGuard, rolesGuard(['ADMIN']), async (req, res
 
 usersRouter.delete('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await removeUser(req.params.id as string);
-    res.json(ok(data));
-  } catch (e) {
+    const u = (req as any).user || {};
+    const actorId = u.id ?? u.sub ?? u.userId ?? u.uid;
+    if (!actorId) {
+      return res.status(401).json({ success: false, error: { message: 'Unauthorized' } });
+    }
+
+    const result = await removeUserAuto(req.params.id as string, actorId);
+    res.json({ success: true, data: result });
+  } catch (e: any) {
+    if (e?.status)
+      return res.status(e.status).json({ success: false, error: { message: e.message } });
     next(e);
   }
 });

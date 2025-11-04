@@ -16,9 +16,6 @@ const USERS_N = Number(process.env.SEED_USERS || 20);
 const ANNS_N = Number(process.env.SEED_ANNOUNCEMENTS || 20);
 const BLOGS_N = Number(process.env.SEED_BLOGS || 20);
 
-const SESSIONS_PAST = Number(process.env.SESSIONS_PAST ?? 1);
-const SESSIONS_THIS = Number(process.env.SESSIONS_THIS ?? 1);
-const SESSIONS_NEXT = Number(process.env.SESSIONS_NEXT ?? 1);
 const ATT_PRESENT_RATE = Number(process.env.ATT_PRESENT_RATE ?? 0.75);
 const ATT_LATE_RATE = Number(process.env.ATT_LATE_RATE ?? 0.12);
 const ATT_EXCUSED_RATE = Number(process.env.ATT_EXCUSED_RATE ?? 0.08);
@@ -42,20 +39,6 @@ function toTitleCase(s: string) {
   return s.replace(/\w\S*/g, (w) => (w[0]?.toUpperCase() ?? '') + w.slice(1));
 }
 
-function pad(n: number) {
-  return n.toString().padStart(2, '0');
-}
-
-function randomTimeRange() {
-  const startH = faker.number.int({ min: 6, max: 19 });
-  const endH = faker.number.int({ min: startH + 1, max: Math.min(startH + 4, 21) });
-  const mins = [0, 30];
-  const m1 = faker.helpers.arrayElement(mins);
-  const m2 = faker.helpers.arrayElement(mins);
-  return `${pad(startH)}.${pad(m1)}–${pad(endH)}.${pad(m2)}`;
-}
-
-const DAY_POOL = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 const LOC_POOL = [
   'Sport Center Kampus H',
   'GOR Gloria',
@@ -78,46 +61,10 @@ const TAG_POOL = [
   'announcement',
 ];
 
-const ID_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 function normalizeLocalDate(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
-function nextDow(base: Date, targetDow: number) {
-  const diff = (targetDow - base.getDay() + 7) % 7;
-  const t = new Date(base);
-  t.setDate(base.getDate() + diff);
-  return normalizeLocalDate(t);
-}
-function getOccurrenceDates(dayName: string) {
-  const dow = ID_DAYS.indexOf(dayName);
-  const today = new Date();
-  const todayNorm = normalizeLocalDate(today);
-  const thisWeek = nextDow(today, dow);
-  const pasts: Date[] = [];
-  const nexts: Date[] = [];
 
-  for (let i = SESSIONS_PAST; i >= 1; i--) {
-    const d = new Date(thisWeek);
-    d.setDate(thisWeek.getDate() - 7 * i);
-    pasts.push(normalizeLocalDate(d));
-  }
-
-  const thisOnes =
-    SESSIONS_THIS > 0
-      ? [
-          thisWeek.getTime() > todayNorm.getTime()
-            ? normalizeLocalDate(thisWeek)
-            : normalizeLocalDate(thisWeek),
-        ]
-      : [];
-
-  for (let i = 0; i < SESSIONS_NEXT; i++) {
-    const d = new Date(thisWeek);
-    d.setDate(thisWeek.getDate() + 7 * (i + 1));
-    nexts.push(normalizeLocalDate(d));
-  }
-  return [...pasts, ...thisOnes, ...nexts];
-}
 function pickStatus(): AttendanceStatus {
   const r = Math.random();
   if (r < ATT_PRESENT_RATE) return AttendanceStatus.PRESENT;
@@ -129,14 +76,12 @@ function pickStatus(): AttendanceStatus {
 async function ensureBaseAnnouncements() {
   const base = [
     {
-      day: 'Rabu',
-      time: '15.00–18.00',
+      title: 'Latihan Rutin Rabu',
       location: 'Sport Center Kampus H',
       locationLink: 'https://www.google.com/maps/search/?api=1&query=Sport%20Center%20Kampus%20H',
     },
     {
-      day: 'Minggu',
-      time: '11.00–14.00',
+      title: 'Latihan Rutin Minggu',
       location: 'GOR Gloria',
       locationLink: 'https://www.google.com/maps/search/?api=1&query=GOR%20Gloria',
     },
@@ -157,19 +102,13 @@ async function ensureBaseAnnouncements() {
     ).id;
 
   const ids: string[] = [];
+  const dtMinus2h = new Date(Date.now() - 2 * 60 * 60 * 1000);
+
   for (const b of base) {
-    const found = await prisma.announcement.findFirst({
-      where: { day: b.day, time: b.time, location: b.location },
-      select: { id: true },
-    });
-    if (found?.id) {
-      ids.push(found.id);
-      continue;
-    }
     const created = await prisma.announcement.create({
       data: {
-        day: b.day,
-        time: b.time,
+        title: b.title,
+        datetime: dtMinus2h,
         location: b.location,
         locationLink: b.locationLink,
         imageUrl: null,
@@ -191,35 +130,33 @@ async function seedAttendanceForAnnouncements(announcementIds?: string[]) {
   const memberIds = members.map((m) => m.id);
 
   for (const ann of anns) {
-    const dates = getOccurrenceDates(ann.day);
-    for (const date of dates) {
-      const session = await prisma.attendanceSession.upsert({
-        where: { announcementId_date: { announcementId: ann.id, date } },
-        create: { announcementId: ann.id, date, openedAt: new Date(date) },
+    const baseDate = normalizeLocalDate(new Date(ann.datetime));
+    const session = await prisma.attendanceSession.upsert({
+      where: { announcementId_date: { announcementId: ann.id, date: baseDate } },
+      create: { announcementId: ann.id, date: baseDate, openedAt: new Date(baseDate) },
+      update: {},
+      select: { id: true },
+    });
+
+    const targetCount = Math.round(
+      memberIds.length * (ATT_PRESENT_RATE + ATT_LATE_RATE + ATT_EXCUSED_RATE),
+    );
+    const presentIds = faker.helpers.arrayElements(memberIds, Math.max(0, targetCount));
+
+    for (const uid of presentIds) {
+      await prisma.attendance.upsert({
+        where: { sessionId_userId: { sessionId: session.id, userId: uid } },
+        create: {
+          sessionId: session.id,
+          userId: uid,
+          status: pickStatus(),
+          note: faker.datatype.boolean({ probability: 0.15 })
+            ? faker.lorem.sentence({ min: 3, max: 8 })
+            : null,
+          createdAt: new Date(baseDate),
+        },
         update: {},
-        select: { id: true },
       });
-
-      const targetCount = Math.round(
-        memberIds.length * (ATT_PRESENT_RATE + ATT_LATE_RATE + ATT_EXCUSED_RATE),
-      );
-      const presentIds = faker.helpers.arrayElements(memberIds, Math.max(0, targetCount));
-
-      for (const uid of presentIds) {
-        await prisma.attendance.upsert({
-          where: { sessionId_userId: { sessionId: session.id, userId: uid } },
-          create: {
-            sessionId: session.id,
-            userId: uid,
-            status: pickStatus(),
-            note: faker.datatype.boolean({ probability: 0.15 })
-              ? faker.lorem.sentence({ min: 3, max: 8 })
-              : null,
-            createdAt: new Date(date),
-          },
-          update: {},
-        });
-      }
     }
   }
 }
@@ -258,9 +195,7 @@ async function main() {
       .toLowerCase()
       .replace(/\s+/g, '');
     const [local, domain] = emailRaw.split('@');
-    const email = `${local}+${Date.now().toString(36)}${faker.string
-      .alphanumeric(3)
-      .toLowerCase()}@${domain}`;
+    const email = `${local}+${Date.now().toString(36)}${faker.string.alphanumeric(3).toLowerCase()}@${domain}`;
 
     const u = await prisma.user.create({
       data: {
@@ -284,8 +219,7 @@ async function main() {
   const baseAnnIds = await ensureBaseAnnouncements();
 
   for (let i = 0; i < ANNS_N; i++) {
-    const day = faker.helpers.arrayElement(DAY_POOL);
-    const time = randomTimeRange();
+    const title = toTitleCase(faker.lorem.words({ min: 2, max: 4 }));
     const location = faker.helpers.arrayElement(LOC_POOL);
     const q = encodeURIComponent(location);
     const locationLink = faker.datatype.boolean()
@@ -297,8 +231,8 @@ async function main() {
 
     await prisma.announcement.create({
       data: {
-        day,
-        time,
+        title,
+        datetime: new Date(Date.now() - 2 * 60 * 60 * 1000),
         location,
         locationLink,
         imageUrl,

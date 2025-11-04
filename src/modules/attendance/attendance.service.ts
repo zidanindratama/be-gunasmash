@@ -1,26 +1,22 @@
-import { Prisma, AttendanceStatus } from '@prisma/client';
-import {
-  isNowWithinAnnouncementWindow,
-  normalizeLocalDate,
-  parseTimeRangeToDates,
-} from '../common/time/announcement-window.js';
+import { AttendanceStatus } from '@prisma/client';
 import { prisma } from '../prisma/client.js';
 import type { SessionQueryDto } from '../common/validators/schemas.js';
+import {
+  isSameLocalDate,
+  normalizeLocalDate,
+  parseYMD,
+} from '../common/time/announcement-window.js';
 
-async function getOrCreateSession(announcementId: string, date?: Date) {
-  const base = date ?? new Date();
-  const sessionDate = normalizeLocalDate(base);
-
+async function getOrCreateSession(announcementId: string, date: Date) {
+  const sessionDate = normalizeLocalDate(date);
   let session = await prisma.attendanceSession.findUnique({
     where: { announcementId_date: { announcementId, date: sessionDate } },
   });
-
   if (!session) {
     session = await prisma.attendanceSession.create({
       data: { announcementId, date: sessionDate, openedAt: new Date() },
     });
   }
-
   return session;
 }
 
@@ -33,14 +29,14 @@ export async function memberCheckIn(userId: string, announcementId: string, note
   }
 
   const now = new Date();
-  if (!isNowWithinAnnouncementWindow(ann.day, ann.time, now)) {
+  const annDate = new Date(ann.datetime);
+  if (!isSameLocalDate(now, annDate)) {
     const err: any = new Error('Attendance is closed for this schedule');
     err.status = 403;
     throw err;
   }
 
-  const { targetDate } = parseTimeRangeToDates(ann.day, ann.time, now);
-  const session = await getOrCreateSession(announcementId, targetDate);
+  const session = await getOrCreateSession(announcementId, annDate);
 
   const att = await prisma.attendance.upsert({
     where: { sessionId_userId: { sessionId: session.id, userId } },
@@ -66,22 +62,15 @@ export async function adminCheckIn(params: {
     throw err;
   }
 
-  let base = new Date();
+  let base = new Date(ann.datetime);
   if (params.date) {
-    const [yStr, mStr, dStr] = params.date.split('-');
-    const y = Number(yStr);
-    if (!Number.isFinite(y)) {
+    const parsed = parseYMD(params.date);
+    if (!parsed) {
       const err: any = new Error('Invalid date format. Use YYYY or YYYY-MM or YYYY-MM-DD');
       err.status = 400;
       throw err;
     }
-    const m = mStr ? Number(mStr) : 1;
-    const d = dStr ? Number(dStr) : 1;
-
-    const mm = Math.min(Math.max(m, 1), 12) - 1;
-    const dd = Math.max(d, 1);
-
-    base = new Date(y, mm, dd);
+    base = parsed;
   }
 
   const session = await getOrCreateSession(params.announcementId, base);
@@ -108,64 +97,76 @@ export async function sessionSummary(query: SessionQueryDto) {
     throw err;
   }
 
-  let base = new Date();
+  let base = new Date(ann.datetime);
   if (query.date) {
-    const [yStr, mStr, dStr] = query.date.split('-');
-    const y = Number(yStr);
-    if (!Number.isFinite(y)) {
+    const parsed = parseYMD(query.date);
+    if (!parsed) {
       const err: any = new Error('Invalid date format. Use YYYY or YYYY-MM or YYYY-MM-DD');
       err.status = 400;
       throw err;
     }
-    const m = mStr ? Number(mStr) : 1;
-    const d = dStr ? Number(dStr) : 1;
-    const mm = Math.min(Math.max(m, 1), 12) - 1;
-    const dd = Math.max(d, 1);
-    base = new Date(y, mm, dd);
+    base = parsed;
   }
 
   const sessionDate = normalizeLocalDate(base);
+
   const session = await prisma.attendanceSession.findUnique({
     where: { announcementId_date: { announcementId: query.announcementId, date: sessionDate } },
-    include: { items: { include: { user: true } } },
+    select: { id: true, date: true, state: true, openedAt: true, closedAt: true },
   });
 
   const totalMembers = await prisma.user.count({ where: { role: 'MEMBER' } });
-  const presentIds = new Set<string>((session?.items ?? []).map((i) => i.userId));
+
+  if (!session) {
+    return {
+      session: null,
+      counts: { totalMembers, present: 0, absent: totalMembers },
+      presentUsers: [],
+      absentUsers: await prisma.user.findMany({
+        where: { role: 'MEMBER' },
+        select: { id: true, name: true, email: true },
+        orderBy: { name: 'asc' },
+        take: query.limit ?? 20,
+        skip: ((query.page ?? 1) - 1) * (query.limit ?? 20),
+      }),
+    };
+  }
+
+  const attRows = await prisma.attendance.findMany({
+    where: { sessionId: session.id },
+    select: { userId: true },
+  });
+
+  const presentIds = Array.from(new Set(attRows.map((r) => r.userId)));
 
   const page = query.page ?? 1;
   const limit = query.limit ?? 20;
   const skip = (page - 1) * limit;
 
-  const presentUsers = await prisma.user.findMany({
-    where: { id: { in: Array.from(presentIds) } },
-    select: { id: true, name: true, email: true },
-    skip,
-    take: limit,
-    orderBy: { name: 'asc' },
-  });
+  const presentUsers = presentIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: presentIds } },
+        select: { id: true, name: true, email: true },
+        orderBy: { name: 'asc' },
+        skip,
+        take: limit,
+      })
+    : [];
 
   const absentUsers = await prisma.user.findMany({
-    where: { role: 'MEMBER', id: { notIn: Array.from(presentIds) } },
+    where: { role: 'MEMBER', id: { notIn: presentIds } },
     select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' },
     skip,
     take: limit,
-    orderBy: { name: 'asc' },
   });
 
   return {
-    session: session
-      ? {
-          id: session.id,
-          date: session.date,
-          openedAt: session.openedAt,
-          closedAt: session.closedAt,
-        }
-      : null,
+    session,
     counts: {
       totalMembers,
-      present: presentIds.size,
-      absent: Math.max(0, totalMembers - presentIds.size),
+      present: presentIds.length,
+      absent: Math.max(0, totalMembers - presentIds.length),
     },
     presentUsers,
     absentUsers,

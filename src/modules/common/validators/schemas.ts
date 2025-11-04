@@ -13,8 +13,8 @@ export const SignInSchema = z.object({
 });
 
 export const AnnouncementSchema = z.object({
-  day: z.string().min(3).trim(),
-  time: z.string().min(1).trim(),
+  title: z.string().min(2).trim(),
+  datetime: z.string().datetime(),
   location: z.string().min(2).trim(),
   locationLink: z.string().url().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),

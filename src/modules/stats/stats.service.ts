@@ -1,6 +1,6 @@
 import { AttendanceStatus } from '@prisma/client';
-import { normalizeLocalDate } from '../common/time/announcement-window.js';
 import { prisma } from '../prisma/client.js';
+import { normalizeLocalDate, parseYMD } from '../common/time/announcement-window.js';
 
 export async function getGlobalStats() {
   const [
@@ -40,22 +40,23 @@ export async function getGlobalStats() {
 }
 
 export async function getAttendanceStatsBySession(announcementId: string, date?: string) {
-  let base = new Date();
+  const ann = await prisma.announcement.findUnique({
+    where: { id: announcementId },
+    select: { id: true, datetime: true },
+  });
+  if (!ann) {
+    throw Object.assign(new Error('Announcement not found'), { status: 404 });
+  }
 
+  let base = new Date(ann.datetime);
   if (date) {
-    const [yStr, mStr, dStr] = date.split('-');
-    const y = Number(yStr);
-    if (!Number.isFinite(y)) {
+    const parsed = parseYMD(date);
+    if (!parsed) {
       throw Object.assign(new Error('Invalid date format. Use YYYY or YYYY-MM or YYYY-MM-DD'), {
         status: 400,
       });
     }
-    const m = mStr ? Number(mStr) : 1;
-    const d = dStr ? Number(dStr) : 1;
-
-    const mm = Math.min(Math.max(m, 1), 12) - 1;
-    const dd = Math.max(d, 1);
-    base = new Date(y, mm, dd);
+    base = parsed;
   }
 
   const sessionDate = normalizeLocalDate(base);

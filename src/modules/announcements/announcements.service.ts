@@ -4,32 +4,29 @@ import { prisma } from '../prisma/client.js';
 
 export async function listAnnouncements(q: any) {
   const { page, limit, skip, search, orderBy, where } = parseListQuery(q);
-
   const cond: Prisma.AnnouncementWhereInput = { ...where };
   if (search) {
     cond.OR = [
-      { day: { contains: search, mode: 'insensitive' } },
+      { title: { contains: search, mode: 'insensitive' } },
       { location: { contains: search, mode: 'insensitive' } },
     ];
   }
-
   const [items, total] = await Promise.all([
     prisma.announcement.findMany({
       where: cond,
       skip,
       take: limit,
-      orderBy: orderBy || { createdAt: 'desc' },
+      orderBy: orderBy || { datetime: 'desc' },
     }),
     prisma.announcement.count({ where: cond }),
   ]);
-
   return shapeList(items, total, page, limit);
 }
 
 export async function createAnnouncement(
   input: {
-    day: string;
-    time: string;
+    title: string;
+    datetime: string;
     location: string;
     locationLink?: string | null;
     imageUrl?: string | null;
@@ -38,8 +35,8 @@ export async function createAnnouncement(
 ) {
   const ann = await prisma.announcement.create({
     data: {
-      day: input.day,
-      time: input.time,
+      title: input.title,
+      datetime: new Date(input.datetime),
       location: input.location,
       locationLink: input.locationLink ?? null,
       imageUrl: input.imageUrl ?? null,
@@ -62,8 +59,8 @@ export async function getAnnouncement(id: string) {
 export async function updateAnnouncement(
   id: string,
   input: Partial<{
-    day: string;
-    time: string;
+    title: string;
+    datetime: string;
     location: string;
     locationLink?: string | null;
     imageUrl?: string | null;
@@ -72,7 +69,9 @@ export async function updateAnnouncement(
   const ann = await prisma.announcement.update({
     where: { id },
     data: {
-      ...input,
+      title: input.title,
+      datetime: input.datetime === undefined ? undefined : new Date(input.datetime),
+      location: input.location,
       locationLink: input.locationLink === undefined ? undefined : (input.locationLink ?? null),
       imageUrl: input.imageUrl === undefined ? undefined : (input.imageUrl ?? null),
     },

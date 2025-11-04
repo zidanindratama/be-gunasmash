@@ -38,3 +38,22 @@ export function isNowWithinAnnouncementWindow(day: string, range: string, now: D
   const { start, end } = parseTimeRangeToDates(day, range, now);
   return now >= start && now <= end;
 }
+
+const ID_RE = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/;
+
+export function isSameLocalDate(a: Date, b: Date) {
+  const na = normalizeLocalDate(a);
+  const nb = normalizeLocalDate(b);
+  return na.getTime() === nb.getTime();
+}
+
+export function parseYMD(s: string): Date | null {
+  const m = ID_RE.exec(String(s).trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = m[2] ? Math.min(Math.max(Number(m[2]), 1), 12) - 1 : 0;
+  const d = m[3] ? Math.max(Number(m[3]), 1) : 1;
+  const dt = new Date(y, mo, d);
+  if (!Number.isFinite(dt.getTime())) return null;
+  return dt;
+}

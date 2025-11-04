@@ -41,8 +41,8 @@ model User {
 
 model Announcement {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  day          String
-  time         String
+  title        String
+  datetime     DateTime
   location     String
   locationLink String?
   imageUrl     String?
@@ -50,10 +50,11 @@ model Announcement {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  author   User               @relation(fields: [createdBy], references: [id])
+  author   User                @relation(fields: [createdBy], references: [id])
   sessions AttendanceSession[]
 
-  @@index([day])
+  @@index([datetime])
+  @@index([title])
 }
 
 model Blog {
@@ -96,7 +97,7 @@ model Attendance {
   createdAt DateTime         @default(now())
 
   session AttendanceSession @relation(fields: [sessionId], references: [id])
-  user    User             @relation(fields: [userId], references: [id])
+  user    User              @relation(fields: [userId], references: [id])
 
   @@unique([sessionId, userId], name: "sessionId_userId")
 }

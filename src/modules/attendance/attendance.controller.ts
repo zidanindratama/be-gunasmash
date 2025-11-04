@@ -23,7 +23,7 @@ attendanceRouter.post(
   async (req, res, next) => {
     try {
       const dto = MemberCheckInSchema.parse(req.body);
-      const userId = (req as any).user.sub as string;
+      const userId = (req as any).user.sub ?? (req as any).user.id;
       const data = await memberCheckIn(userId, dto.announcementId, dto.note);
       res.json(ok(data));
     } catch (e) {
@@ -41,7 +41,7 @@ attendanceRouter.post(
   async (req, res, next) => {
     try {
       const dto = AdminCheckInSchema.parse(req.body);
-      const adminId = (req as any).user.sub as string;
+      const adminId = (req as any).user.sub ?? (req as any).user.id;
       const data = await adminCheckIn({
         adminId,
         announcementId: dto.announcementId,

@@ -33,7 +33,7 @@ announcementsRouter.get('/:id', async (req, res, next) => {
 announcementsRouter.post('/', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
     const dto = AnnouncementSchema.parse(req.body);
-    const data = await createAnnouncement(dto, (req as any).user.sub);
+    const data = await createAnnouncement(dto, (req as any).user.sub ?? (req as any).user.id);
     res.json(ok(data));
   } catch (e) {
     next(e);
