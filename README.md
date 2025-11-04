@@ -11,9 +11,25 @@ Dibangun dengan **Express 5**, **TypeScript**, **Prisma (MongoDB)**, **Zod**, **
 
 ## 🌐 Links
 
-- 🔗 **Production URL**: [https://be-gunasmash.vercel.app](https://be-gunasmash.vercel.app)
-- 📘 **API Docs (Postman)**: [Dokumentasi API — GunaSmash](https://documenter.getpostman.com/view/14021625/2sB3WpShAL#dokumentasi-api-gunasmash)
-- 💻 **GitHub Repository**: [github.com/zidanindratama/be-gunasmash](https://github.com/zidanindratama/be-gunasmash)
+| Link Type                 | URL                                                                                                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🟢 **Production**         | [https://be-gunasmash.vercel.app](https://be-gunasmash.vercel.app)                                                                                                           |
+| 📘 **API Docs (Postman)** | [https://documenter.getpostman.com/view/14021625/2sB3WpShAL#dokumentasi-api-gunasmash](https://documenter.getpostman.com/view/14021625/2sB3WpShAL#dokumentasi-api-gunasmash) |
+| 💻 **GitHub Repository**  | [https://github.com/zidanindratama/be-gunasmash](https://github.com/zidanindratama/be-gunasmash)                                                                             |
+
+> Tip: Base path API di production adalah `/api` (contoh: `https://be-gunasmash.vercel.app/api/auth/me`)
+
+---
+
+## ⚡ Quick Check (cURL)
+
+```bash
+# Health check (root)
+curl -s https://be-gunasmash.vercel.app/ | jq .
+
+# Example: daftar pengumuman (public)
+curl -s https://be-gunasmash.vercel.app/api/announcements | jq .
+```
 
 ---
 
@@ -31,11 +47,7 @@ Dibangun dengan **Express 5**, **TypeScript**, **Prisma (MongoDB)**, **Zod**, **
 - 👥 **Anggota (Users)** — List/get user, ubah role, hapus, import/export CSV
 - ☁️ **Upload Gambar** — Cloudinary (multipart/form-data)
 - 📊 **Statistik (Stats)** — Data global & statistik kehadiran per sesi
-- 🧩 **Developer Experience**
-  - Validasi Zod
-  - Middleware error handler
-  - CORS, Helmet, Compression, dan Morgan logging
-
+- 🧩 **Developer Experience** — Zod validation, error handler, CORS, Helmet, Compression, Morgan logging
 - 🌱 **Seeder** — Generate data dummy otomatis (user, pengumuman, blog, absensi)
 
 ---
@@ -117,7 +129,7 @@ SEED_ANNOUNCEMENTS=20
 SEED_BLOGS=20
 ```
 
-> ⚠️ Jangan commit `.env` ke GitHub — hanya simpan `.env.example`.
+> ⚠️ Jangan commit `.env` — simpan **`.env.example`** saja.
 
 ### 4️⃣ Generate Prisma Client
 
@@ -142,11 +154,11 @@ Seeder otomatis membuat:
 ### 6️⃣ Jalankan Server
 
 ```bash
-npm run dev         # mode pengembangan
-npm run build && npm start   # mode produksi
+npm run dev                   # development
+npm run build && npm start    # production
 ```
 
-Akses di [http://localhost:4000](http://localhost:4000)
+Akses di **[http://localhost:4000](http://localhost:4000)**
 
 ---
 
@@ -161,10 +173,7 @@ http://localhost:4000/api
 ### Format Respons
 
 ```json
-// sukses
 { "success": true, "data": <payload> }
-
-// gagal
 { "success": false, "error": { "message": "Pesan error" } }
 ```
 
@@ -182,8 +191,6 @@ http://localhost:4000/api
 | `DELETE` | `/logout`  | Logout & hapus cookie            |
 | `GET`    | `/me`      | Info user login                  |
 
----
-
 ### 👥 Users (`/users`) — hanya `ADMIN`
 
 - `GET /` — List user
@@ -193,8 +200,6 @@ http://localhost:4000/api
 - `POST /import` — Import CSV (`name,email,password?`)
 - `GET /export/csv` — Export CSV
 
----
-
 ### 📢 Announcements (`/announcements`)
 
 - `GET /` — List pengumuman
@@ -203,16 +208,12 @@ http://localhost:4000/api
 - `PATCH /:id` (ADMIN) — Edit pengumuman
 - `DELETE /:id` (ADMIN) — Hapus pengumuman
 
----
-
 ### 🕓 Attendance (`/attendance`)
 
 - `POST /check-in` — Check-in anggota
 - `POST /admin/check-in` — Check-in manual (ADMIN)
 - `GET /session/summary` — Rekap kehadiran sesi
 - `GET /session/export` — Ekspor CSV kehadiran
-
----
 
 ### 📰 Blogs (`/blogs`)
 
@@ -222,13 +223,9 @@ http://localhost:4000/api
 - `PATCH /:id` (ADMIN) — Edit blog
 - `DELETE /:id` (ADMIN) — Hapus blog
 
----
-
 ### ☁️ Uploads (`/uploads`)
 
 - `POST /image` (auth) — Upload gambar ke Cloudinary
-
----
 
 ### 📊 Stats (`/stats`)
 
@@ -275,21 +272,13 @@ http://localhost:4000/api
 
 ## 👨‍💻 Pengembang
 
-**Muhamad Zidan Indratama**
-Full-Stack Web Developer — Universitas Gunadarma
+**Muhamad Zidan Indratama** — Full-Stack Web Developer (Universitas Gunadarma)
 
-📧 [zidanindratama03@gmail.com](mailto:zidanindratama03@gmail.com)
-🌐 [zidanindratama.vercel.app](https://zidanindratama.vercel.app)
+- 📧 [zidanindratama03@gmail.com](mailto:zidanindratama03@gmail.com)
+- 🌐 [zidanindratama.vercel.app](https://zidanindratama.vercel.app)
 
 ---
 
 ## 📝 Lisensi
 
 **ISC License** — bebas digunakan & dimodifikasi untuk kebutuhan internal kampus/organisasi.
-
----
-
-> Backend ini dibuat untuk mendukung sistem informasi UKM Bulutangkis **GunaSmash**,
-> agar kegiatan latihan, absensi, dan informasi klub bisa dikelola secara modern, cepat, dan efisien.
-
----
