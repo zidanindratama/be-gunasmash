@@ -24,37 +24,47 @@ enum SessionState {
   CLOSED
 }
 
-model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  name      String
-  password  String
-  role      Role     @default(MEMBER)
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum AnnouncementType {
+  TRAINING
+  SPARRING
+  TOURNAMENT
+  BRIEFING
+  RECRUITMENT
+  EVENT
+  INFO
+}
 
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  email         String         @unique
+  name          String
+  password      String
+  role          Role           @default(MEMBER)
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   announcements Announcement[]
   blogs         Blog[]
   attendances   Attendance[]
 }
 
 model Announcement {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  id           String              @id @default(auto()) @map("_id") @db.ObjectId
   title        String
+  type         AnnouncementType    @default(INFO)
   datetime     DateTime
   location     String
   locationLink String?
   imageUrl     String?
-  createdBy    String   @db.ObjectId
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  author   User                @relation(fields: [createdBy], references: [id])
-  sessions AttendanceSession[]
+  createdBy    String              @db.ObjectId
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  author       User                @relation(fields: [createdBy], references: [id])
+  sessions     AttendanceSession[]
 
   @@index([datetime])
   @@index([title])
+  @@index([type])
 }
 
 model Blog {
@@ -68,8 +78,7 @@ model Blog {
   published Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  author User @relation(fields: [createdBy], references: [id])
+  author    User     @relation(fields: [createdBy], references: [id])
 }
 
 model AttendanceSession {
@@ -81,23 +90,21 @@ model AttendanceSession {
   closedAt       DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-
-  announcement Announcement @relation(fields: [announcementId], references: [id])
-  items        Attendance[]
+  announcement   Announcement @relation(fields: [announcementId], references: [id])
+  items          Attendance[]
 
   @@unique([announcementId, date], name: "announcementId_date")
 }
 
 model Attendance {
-  id        String           @id @default(auto()) @map("_id") @db.ObjectId
-  sessionId String           @db.ObjectId
-  userId    String           @db.ObjectId
-  status    AttendanceStatus @default(PRESENT)
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String            @db.ObjectId
+  userId    String            @db.ObjectId
+  status    AttendanceStatus  @default(PRESENT)
   note      String?
-  createdAt DateTime         @default(now())
-
-  session AttendanceSession @relation(fields: [sessionId], references: [id])
-  user    User              @relation(fields: [userId], references: [id])
+  createdAt DateTime          @default(now())
+  session   AttendanceSession @relation(fields: [sessionId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
 
   @@unique([sessionId, userId], name: "sessionId_userId")
 }

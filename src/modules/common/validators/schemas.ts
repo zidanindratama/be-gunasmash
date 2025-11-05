@@ -14,6 +14,9 @@ export const SignInSchema = z.object({
 
 export const AnnouncementSchema = z.object({
   title: z.string().min(2).trim(),
+  type: z
+    .enum(['TRAINING', 'SPARRING', 'TOURNAMENT', 'BRIEFING', 'RECRUITMENT', 'EVENT', 'INFO'])
+    .default('INFO'),
   datetime: z.string().datetime(),
   location: z.string().min(2).trim(),
   locationLink: z.string().url().optional().nullable(),

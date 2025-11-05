@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { faker } from '@faker-js/faker';
-import { PrismaClient, AttendanceStatus } from '@prisma/client';
+import { PrismaClient, AttendanceStatus, AnnouncementType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 import type { Role as RoleType } from '@prisma/client';
@@ -73,15 +73,33 @@ function pickStatus(): AttendanceStatus {
   return AttendanceStatus.PRESENT;
 }
 
+function pickAnnouncementType(): AnnouncementType {
+  const pool: AnnouncementType[] = [
+    'TRAINING',
+    'TRAINING',
+    'TRAINING',
+    'SPARRING',
+    'SPARRING',
+    'RECRUITMENT',
+    'BRIEFING',
+    'TOURNAMENT',
+    'EVENT',
+    'INFO',
+  ];
+  return faker.helpers.arrayElement(pool);
+}
+
 async function ensureBaseAnnouncements() {
   const base = [
     {
       title: 'Latihan Rutin Rabu',
+      type: 'TRAINING' as AnnouncementType,
       location: 'Sport Center Kampus H',
       locationLink: 'https://www.google.com/maps/search/?api=1&query=Sport%20Center%20Kampus%20H',
     },
     {
       title: 'Latihan Rutin Minggu',
+      type: 'TRAINING' as AnnouncementType,
       location: 'GOR Gloria',
       locationLink: 'https://www.google.com/maps/search/?api=1&query=GOR%20Gloria',
     },
@@ -108,6 +126,7 @@ async function ensureBaseAnnouncements() {
     const created = await prisma.announcement.create({
       data: {
         title: b.title,
+        type: b.type,
         datetime: dtMinus2h,
         location: b.location,
         locationLink: b.locationLink,
@@ -219,7 +238,16 @@ async function main() {
   const baseAnnIds = await ensureBaseAnnouncements();
 
   for (let i = 0; i < ANNS_N; i++) {
-    const title = toTitleCase(faker.lorem.words({ min: 2, max: 4 }));
+    const type = pickAnnouncementType();
+    const title =
+      type === 'RECRUITMENT'
+        ? `Open Recruitment ${faker.word.noun()}`
+        : type === 'SPARRING'
+          ? `Sparring ${toTitleCase(faker.word.adjective())}`
+          : type === 'TRAINING'
+            ? `Latihan ${toTitleCase(faker.word.adjective())}`
+            : toTitleCase(faker.lorem.words({ min: 2, max: 4 }));
+
     const location = faker.helpers.arrayElement(LOC_POOL);
     const q = encodeURIComponent(location);
     const locationLink = faker.datatype.boolean()
@@ -229,10 +257,16 @@ async function main() {
       ? `https://picsum.photos/seed/ann-${faker.string.uuid()}/800/400`
       : null;
 
+    const dt = faker.date.between({
+      from: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+
     await prisma.announcement.create({
       data: {
         title,
-        datetime: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        type,
+        datetime: dt,
         location,
         locationLink,
         imageUrl,

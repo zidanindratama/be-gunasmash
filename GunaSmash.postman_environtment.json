@@ -1,67 +1,27 @@
 {
-  "id": "gunasmash-env",
+  "id": "9a168c3c-70d3-454e-bb9b-0800d23705a2",
   "name": "GunaSmash Backend (Local)",
   "values": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:4000/api",
-      "enabled": true
-    },
-    {
-      "key": "email",
-      "value": "admin+1762142772@example.com",
-      "enabled": true
-    },
-    {
-      "key": "password",
-      "value": "password123",
-      "enabled": true
-    },
-    {
-      "key": "access_token",
-      "value": "",
-      "enabled": true
-    },
-    {
-      "key": "user_id",
-      "value": "",
-      "enabled": true
-    },
-    {
-      "key": "member_id",
-      "value": "",
-      "enabled": true
-    },
-    {
-      "key": "announcement_id",
-      "value": "",
-      "enabled": true
-    },
-    {
-      "key": "blog_id",
-      "value": "",
-      "enabled": true
-    },
-    {
-      "key": "retry_once",
-      "value": "",
-      "enabled": true
-    },
-    {
-      "key": "search_term",
-      "value": "test",
-      "enabled": true
-    },
-    { "key": "admin_email", "value": "zidanindratama03@gmail.com", "enabled": true },
-    { "key": "admin_password", "value": "password123", "enabled": true },
+    { "key": "base_url", "value": "http://localhost:4000/api", "enabled": true },
+
+    { "key": "email", "value": "zidanindratama03@gmail.com", "enabled": true },
+    { "key": "password", "value": "password123", "enabled": true },
+    { "key": "access_token", "value": "", "enabled": true },
+    { "key": "user_id", "value": "", "enabled": true },
+    { "key": "member_id", "value": "", "enabled": true },
+    { "key": "announcement_id", "value": "", "enabled": true },
+    { "key": "blog_id", "value": "", "enabled": true },
+    { "key": "search_term", "value": "test", "enabled": true },
     { "key": "users_page", "value": "1", "enabled": true },
     { "key": "users_limit", "value": "10", "enabled": true },
     { "key": "users_filter", "value": "", "enabled": true },
     { "key": "users_sort", "value": "", "enabled": true },
     { "key": "session_date", "value": "", "enabled": true },
+
+    { "key": "admin_email", "value": "zidanindratama03@gmail.com", "enabled": true },
+    { "key": "admin_password", "value": "password123", "enabled": true },
     { "key": "admin_access_token", "value": "", "enabled": true }
   ],
   "_postman_variable_scope": "environment",
-  "_postman_exported_at": "2025-11-03T04:06:12Z",
-  "_postman_exported_using": "Postman Generator"
+  "_postman_exported_using": "Postman/11.54.6"
 }
