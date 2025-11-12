@@ -15,17 +15,16 @@ const ANN_TYPES: AnnouncementType[] = [
 function isPlaceholder(v: string) {
   const s = v.trim();
   return (
-    s === '' || s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null' || s.includes('{{') // e.g. "{{ann_type}}"
+    s === '' || s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null' || s.includes('{{')
   );
 }
 
 function normalizeTypes(input: unknown): AnnouncementType[] {
   const arr = Array.isArray(input) ? input : input != null ? [input] : [];
   const up = arr
-    .flatMap((v) => String(v).split(',')) // dukung "TRAINING,EVENT"
+    .flatMap((v) => String(v).split(','))
     .map((s) => s.trim().toUpperCase())
     .filter((s) => s.length > 0 && !isPlaceholder(s)) as string[];
-
   const valid = up.filter((s) => (ANN_TYPES as string[]).includes(s)) as AnnouncementType[];
   return Array.from(new Set(valid));
 }
@@ -33,14 +32,13 @@ function normalizeTypes(input: unknown): AnnouncementType[] {
 export async function listAnnouncements(q: any) {
   const { page, limit, skip, search, orderBy, where } = parseListQuery(q);
   const cond: Prisma.AnnouncementWhereInput = { ...where };
-
   if (search) {
     cond.OR = [
       { title: { contains: search, mode: 'insensitive' } },
       { location: { contains: search, mode: 'insensitive' } },
+      { content: { contains: search, mode: 'insensitive' } },
     ];
   }
-
   const types = normalizeTypes(q?.type);
   if (types.length === 1) cond.type = types[0];
   else if (types.length > 1) cond.type = { in: types };
@@ -66,6 +64,7 @@ export async function createAnnouncement(
     location: string;
     locationLink?: string | null;
     imageUrl?: string | null;
+    content: string;
   },
   userId: string,
 ) {
@@ -77,6 +76,7 @@ export async function createAnnouncement(
       location: input.location,
       locationLink: input.locationLink ?? null,
       imageUrl: input.imageUrl ?? null,
+      content: input.content,
       createdBy: userId,
     },
   });
@@ -102,6 +102,7 @@ export async function updateAnnouncement(
     location: string;
     locationLink?: string | null;
     imageUrl?: string | null;
+    content: string;
   }>,
 ) {
   const ann = await prisma.announcement.update({
@@ -113,6 +114,7 @@ export async function updateAnnouncement(
       location: input.location,
       locationLink: input.locationLink === undefined ? undefined : (input.locationLink ?? null),
       imageUrl: input.imageUrl === undefined ? undefined : (input.imageUrl ?? null),
+      content: input.content,
     },
   });
   return ann;

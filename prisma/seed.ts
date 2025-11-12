@@ -89,6 +89,57 @@ function pickAnnouncementType(): AnnouncementType {
   return faker.helpers.arrayElement(pool);
 }
 
+function randomAnnContent(title: string, type: AnnouncementType) {
+  const head = `# ${title}`;
+  const intro =
+    type === 'TRAINING'
+      ? 'Sesi latihan terstruktur untuk meningkatkan fundamental, footwork, dan konsistensi rally.'
+      : type === 'SPARRING'
+        ? 'Sesi sparring dengan format best of 3. Fokus pada taktik, komunikasi, dan shot selection.'
+        : type === 'TOURNAMENT'
+          ? 'Seleksi internal untuk menentukan perwakilan turnamen dan kesiapan bertanding.'
+          : type === 'BRIEFING'
+            ? 'Briefing panitia terkait pembagian tugas, rundown, dan SOP pelaksanaan.'
+            : type === 'RECRUITMENT'
+              ? 'Rekrutmen terbuka untuk anggota baru dengan alur registrasi dan orientasi.'
+              : type === 'EVENT'
+                ? 'Acara spesial klub berisi ekshibisi, sharing, dan kebersamaan komunitas.'
+                : 'Informasi internal terkait jadwal, perubahan kebijakan, atau pengumuman penting lainnya.';
+  const bullets =
+    type === 'TRAINING'
+      ? [
+          'Pemanasan dinamis 10 menit',
+          'Footwork pola L-R 4 set',
+          'Netting konsistensi 2 x 6 menit',
+          'Rally drive 3 x 5 menit',
+          'Pendinginan',
+        ]
+      : type === 'SPARRING'
+        ? [
+            'Rotasi lawan setiap match',
+            'Self-umpire dan sportivitas',
+            'Catat skor di meja panitia',
+            'Evaluasi singkat setelah pertandingan',
+          ]
+        : type === 'TOURNAMENT'
+          ? ['Konsistensi 10+ rally', 'Serve/receive akurat', 'Recovery cepat', 'Etika bertanding']
+          : type === 'BRIEFING'
+            ? ['Pembagian divisi', 'Rundown hari-H', 'SOP venue dan keamanan', 'Q&A']
+            : type === 'RECRUITMENT'
+              ? [
+                  'Buat akun dan lengkapi profil',
+                  'Verifikasi data',
+                  'Ikuti orientasi',
+                  'Aktif keanggotaan',
+                ]
+              : type === 'EVENT'
+                ? ['Pembukaan', 'Exhibition match', 'Sharing teknik', 'Foto bersama']
+                : ['Berlaku hingga pemberitahuan berikutnya', 'Cek grup internal untuk update'];
+  const bulletMd = bullets.map((b) => `- ${b}`).join('\n');
+  const note = `> ${faker.lorem.sentence({ min: 8, max: 14 })}`;
+  return [head, '', intro, '', '## Rincian', '', bulletMd, '', note].join('\n');
+}
+
 async function ensureBaseAnnouncements() {
   const base = [
     {
@@ -131,6 +182,7 @@ async function ensureBaseAnnouncements() {
         location: b.location,
         locationLink: b.locationLink,
         imageUrl: null,
+        content: randomAnnContent(b.title, b.type),
         createdBy: creatorId,
       },
       select: { id: true },
@@ -144,7 +196,6 @@ async function seedAttendanceForAnnouncements(announcementIds?: string[]) {
   const anns = announcementIds?.length
     ? await prisma.announcement.findMany({ where: { id: { in: announcementIds } } })
     : await prisma.announcement.findMany();
-
   const members = await prisma.user.findMany({ where: { role: 'MEMBER' }, select: { id: true } });
   const memberIds = members.map((m) => m.id);
 
@@ -241,7 +292,7 @@ async function main() {
     const type = pickAnnouncementType();
     const title =
       type === 'RECRUITMENT'
-        ? `Open Recruitment ${faker.word.noun()}`
+        ? `Open Recruitment ${toTitleCase(faker.word.noun())}`
         : type === 'SPARRING'
           ? `Sparring ${toTitleCase(faker.word.adjective())}`
           : type === 'TRAINING'
@@ -256,7 +307,6 @@ async function main() {
     const imageUrl = faker.datatype.boolean()
       ? `https://picsum.photos/seed/ann-${faker.string.uuid()}/800/400`
       : null;
-
     const dt = faker.date.between({
       from: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
       to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -270,6 +320,7 @@ async function main() {
         location,
         locationLink,
         imageUrl,
+        content: randomAnnContent(title, type),
         createdBy: anyUser(),
         createdAt: faker.date.recent({ days: 60 }),
       },

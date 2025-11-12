@@ -21,6 +21,7 @@ export const AnnouncementSchema = z.object({
   location: z.string().min(2).trim(),
   locationLink: z.string().url().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
+  content: z.string().min(1),
 });
 export type AnnouncementInput = z.infer<typeof AnnouncementSchema>;
 
