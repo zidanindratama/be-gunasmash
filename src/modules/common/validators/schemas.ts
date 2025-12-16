@@ -63,6 +63,7 @@ export const SessionQuerySchema = z.object({
     .optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  search: z.string().optional(),
 });
 
 export const AttendanceStatsQuerySchema = z.object({
@@ -73,7 +74,35 @@ export const AttendanceStatsQuerySchema = z.object({
     .optional(),
 });
 
+export const AttendanceListQuerySchema = z.object({
+  announcementId: z.string().min(1).optional(),
+  userId: z.string().min(1).optional(),
+  status: z.nativeEnum(AttendanceStatus).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+});
+
+export const UserUpdateSchema = z.object({
+  name: z.string().min(2).trim().optional(),
+  email: z.string().email().trim().optional(),
+  role: z.nativeEnum(Role).optional(),
+  avatarUrl: z.string().url().optional().nullable(),
+});
+
+export const CreateSessionSchema = z.object({
+  title: z.string().min(3),
+  date: z.string().datetime(),
+  status: z.enum(['OPEN', 'CLOSED']),
+});
+
 export type MemberCheckInDto = z.infer<typeof MemberCheckInSchema>;
 export type AdminCheckInDto = z.infer<typeof AdminCheckInSchema>;
 export type SessionQueryDto = z.infer<typeof SessionQuerySchema>;
 export type AttendanceStatsQueryDto = z.infer<typeof AttendanceStatsQuerySchema>;
+export type AttendanceListQueryDto = z.infer<typeof AttendanceListQuerySchema>;

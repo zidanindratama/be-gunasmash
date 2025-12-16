@@ -10,12 +10,20 @@ type RemoveUserOpts = {
 
 export async function listUsers(q: any) {
   const { page, limit, skip, search, orderBy, where } = parseListQuery(q);
+
   const cond: Prisma.UserWhereInput = { ...where };
-  if (search)
+
+  if (search) {
     cond.OR = [
       { name: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
     ];
+  }
+
+  if (cond.role && Array.isArray(cond.role)) {
+    cond.role = { in: cond.role as any };
+  }
+
   const [items, total] = await Promise.all([
     prisma.user.findMany({
       where: cond,
@@ -25,12 +33,20 @@ export async function listUsers(q: any) {
     }),
     prisma.user.count({ where: cond }),
   ]);
+
   const shaped = shapeList(
-    items.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role })),
+    items.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      avatarUrl: u.avatarUrl,
+    })),
     total,
     page,
     limit,
   );
+
   return shaped;
 }
 
@@ -43,6 +59,46 @@ export async function getUser(id: string) {
 export async function updateUserRole(id: string, role: 'ADMIN' | 'MEMBER') {
   const u = await prisma.user.update({ where: { id }, data: { role } });
   return { id: u.id, name: u.name, email: u.email, role: u.role };
+}
+
+export async function updateUser(
+  id: string,
+  input: {
+    name?: string;
+    email?: string;
+    role?: 'ADMIN' | 'MEMBER';
+    avatarUrl?: string | null;
+  },
+) {
+  const existingUser = await prisma.user.findUnique({ where: { id } });
+  if (!existingUser) {
+    throw Object.assign(new Error('User not found'), { status: 404 });
+  }
+
+  if (input.email && input.email !== existingUser.email) {
+    const emailExists = await prisma.user.findUnique({ where: { email: input.email } });
+    if (emailExists) {
+      throw Object.assign(new Error('Email already in use'), { status: 409 });
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id },
+    data: {
+      name: input.name,
+      email: input.email,
+      role: input.role,
+      avatarUrl: input.avatarUrl,
+    },
+  });
+
+  return {
+    id: updatedUser.id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    avatarUrl: updatedUser.avatarUrl,
+  };
 }
 
 export async function removeUser(id: string, opts: RemoveUserOpts = {}) {

@@ -1,383 +1,180 @@
-import 'dotenv/config';
+import { PrismaClient, Role, AnnouncementType, AttendanceStatus } from '@prisma/client';
 import { faker } from '@faker-js/faker';
-import { PrismaClient, AttendanceStatus, AnnouncementType } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
-
-import type { Role as RoleType } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-const SEED = process.env.SEED ? Number(process.env.SEED) : undefined;
-if (!Number.isNaN(SEED) && typeof SEED === 'number') {
-  faker.seed(SEED);
+const CONFIG = {
+  USERS_COUNT: 20,
+  ANNOUNCEMENTS_COUNT: 15,
+  BLOGS_COUNT: 10,
+  ATTENDANCE_RATE: 0.8,
+};
+
+function toTitleCase(str: string) {
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 }
 
-const USERS_N = Number(process.env.SEED_USERS || 20);
-const ANNS_N = Number(process.env.SEED_ANNOUNCEMENTS || 20);
-const BLOGS_N = Number(process.env.SEED_BLOGS || 20);
-
-const ATT_PRESENT_RATE = Number(process.env.ATT_PRESENT_RATE ?? 0.75);
-const ATT_LATE_RATE = Number(process.env.ATT_LATE_RATE ?? 0.12);
-const ATT_EXCUSED_RATE = Number(process.env.ATT_EXCUSED_RATE ?? 0.08);
-
-function pickRole(i: number): RoleType {
-  return i < Math.max(1, Math.floor(USERS_N * 0.2)) ? 'ADMIN' : 'MEMBER';
+function createSlug(title: string) {
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '') +
+    '-' +
+    Date.now().toString(36)
+  );
 }
 
-function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-}
-
-function uniqueSlug(base: string) {
-  return `${slugify(base)}-${Date.now().toString(36)}-${faker.string.alphanumeric(4).toLowerCase()}`;
-}
-
-function toTitleCase(s: string) {
-  return s.replace(/\w\S*/g, (w) => (w[0]?.toUpperCase() ?? '') + w.slice(1));
-}
-
-const LOC_POOL = [
-  'Sport Center Kampus H',
-  'GOR Gloria',
-  'GOR Cempaka',
-  'Hall Kampus E',
-  'Lapangan Indoor Kampus J',
-  'GOR Bimasakti',
-];
-
-const TAG_POOL = [
-  'news',
-  'update',
-  'tips',
-  'event',
-  'club',
-  'training',
-  'match',
-  'tech',
-  'guide',
-  'announcement',
-];
-
-function normalizeLocalDate(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function pickStatus(): AttendanceStatus {
-  const r = Math.random();
-  if (r < ATT_PRESENT_RATE) return AttendanceStatus.PRESENT;
-  if (r < ATT_PRESENT_RATE + ATT_LATE_RATE) return AttendanceStatus.LATE;
-  if (r < ATT_PRESENT_RATE + ATT_LATE_RATE + ATT_EXCUSED_RATE) return AttendanceStatus.EXCUSED;
-  return AttendanceStatus.PRESENT;
-}
-
-function pickAnnouncementType(): AnnouncementType {
-  const pool: AnnouncementType[] = [
-    'TRAINING',
-    'TRAINING',
-    'TRAINING',
-    'SPARRING',
-    'SPARRING',
-    'RECRUITMENT',
-    'BRIEFING',
-    'TOURNAMENT',
-    'EVENT',
-    'INFO',
-  ];
-  return faker.helpers.arrayElement(pool);
-}
-
-function randomAnnContent(title: string, type: AnnouncementType) {
-  const head = `# ${title}`;
-  const intro =
-    type === 'TRAINING'
-      ? 'Sesi latihan terstruktur untuk meningkatkan fundamental, footwork, dan konsistensi rally.'
-      : type === 'SPARRING'
-        ? 'Sesi sparring dengan format best of 3. Fokus pada taktik, komunikasi, dan shot selection.'
-        : type === 'TOURNAMENT'
-          ? 'Seleksi internal untuk menentukan perwakilan turnamen dan kesiapan bertanding.'
-          : type === 'BRIEFING'
-            ? 'Briefing panitia terkait pembagian tugas, rundown, dan SOP pelaksanaan.'
-            : type === 'RECRUITMENT'
-              ? 'Rekrutmen terbuka untuk anggota baru dengan alur registrasi dan orientasi.'
-              : type === 'EVENT'
-                ? 'Acara spesial klub berisi ekshibisi, sharing, dan kebersamaan komunitas.'
-                : 'Informasi internal terkait jadwal, perubahan kebijakan, atau pengumuman penting lainnya.';
-  const bullets =
-    type === 'TRAINING'
-      ? [
-          'Pemanasan dinamis 10 menit',
-          'Footwork pola L-R 4 set',
-          'Netting konsistensi 2 x 6 menit',
-          'Rally drive 3 x 5 menit',
-          'Pendinginan',
-        ]
-      : type === 'SPARRING'
-        ? [
-            'Rotasi lawan setiap match',
-            'Self-umpire dan sportivitas',
-            'Catat skor di meja panitia',
-            'Evaluasi singkat setelah pertandingan',
-          ]
-        : type === 'TOURNAMENT'
-          ? ['Konsistensi 10+ rally', 'Serve/receive akurat', 'Recovery cepat', 'Etika bertanding']
-          : type === 'BRIEFING'
-            ? ['Pembagian divisi', 'Rundown hari-H', 'SOP venue dan keamanan', 'Q&A']
-            : type === 'RECRUITMENT'
-              ? [
-                  'Buat akun dan lengkapi profil',
-                  'Verifikasi data',
-                  'Ikuti orientasi',
-                  'Aktif keanggotaan',
-                ]
-              : type === 'EVENT'
-                ? ['Pembukaan', 'Exhibition match', 'Sharing teknik', 'Foto bersama']
-                : ['Berlaku hingga pemberitahuan berikutnya', 'Cek grup internal untuk update'];
-  const bulletMd = bullets.map((b) => `- ${b}`).join('\n');
-  const note = `> ${faker.lorem.sentence({ min: 8, max: 14 })}`;
-  return [head, '', intro, '', '## Rincian', '', bulletMd, '', note].join('\n');
-}
-
-async function ensureBaseAnnouncements() {
-  const base = [
-    {
-      title: 'Latihan Rutin Rabu',
-      type: 'TRAINING' as AnnouncementType,
-      location: 'Sport Center Kampus H',
-      locationLink: 'https://www.google.com/maps/search/?api=1&query=Sport%20Center%20Kampus%20H',
-    },
-    {
-      title: 'Latihan Rutin Minggu',
-      type: 'TRAINING' as AnnouncementType,
-      location: 'GOR Gloria',
-      locationLink: 'https://www.google.com/maps/search/?api=1&query=GOR%20Gloria',
-    },
-  ];
-
-  const anyAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-  const creatorId =
-    anyAdmin?.id ??
-    (
-      await prisma.user.create({
-        data: {
-          name: 'Auto Admin',
-          email: `admin+${Date.now().toString(36)}@example.com`,
-          password: await bcrypt.hash('password123', 10),
-          role: 'ADMIN',
-        },
-      })
-    ).id;
-
-  const ids: string[] = [];
-  const dtMinus2h = new Date(Date.now() - 2 * 60 * 60 * 1000);
-
-  for (const b of base) {
-    const created = await prisma.announcement.create({
-      data: {
-        title: b.title,
-        type: b.type,
-        datetime: dtMinus2h,
-        location: b.location,
-        locationLink: b.locationLink,
-        imageUrl: null,
-        content: randomAnnContent(b.title, b.type),
-        createdBy: creatorId,
-      },
-      select: { id: true },
-    });
-    ids.push(created.id);
-  }
-  return ids;
-}
-
-async function seedAttendanceForAnnouncements(announcementIds?: string[]) {
-  const anns = announcementIds?.length
-    ? await prisma.announcement.findMany({ where: { id: { in: announcementIds } } })
-    : await prisma.announcement.findMany();
-  const members = await prisma.user.findMany({ where: { role: 'MEMBER' }, select: { id: true } });
-  const memberIds = members.map((m) => m.id);
-
-  for (const ann of anns) {
-    const baseDate = normalizeLocalDate(new Date(ann.datetime));
-    const session = await prisma.attendanceSession.upsert({
-      where: { announcementId_date: { announcementId: ann.id, date: baseDate } },
-      create: { announcementId: ann.id, date: baseDate, openedAt: new Date(baseDate) },
-      update: {},
-      select: { id: true },
-    });
-
-    const targetCount = Math.round(
-      memberIds.length * (ATT_PRESENT_RATE + ATT_LATE_RATE + ATT_EXCUSED_RATE),
-    );
-    const presentIds = faker.helpers.arrayElements(memberIds, Math.max(0, targetCount));
-
-    for (const uid of presentIds) {
-      await prisma.attendance.upsert({
-        where: { sessionId_userId: { sessionId: session.id, userId: uid } },
-        create: {
-          sessionId: session.id,
-          userId: uid,
-          status: pickStatus(),
-          note: faker.datatype.boolean({ probability: 0.15 })
-            ? faker.lorem.sentence({ min: 3, max: 8 })
-            : null,
-          createdAt: new Date(baseDate),
-        },
-        update: {},
-      });
-    }
-  }
+function pickAttendanceStatus(): AttendanceStatus {
+  const rand = Math.random();
+  if (rand < 0.75) return 'PRESENT';
+  if (rand < 0.85) return 'LATE';
+  if (rand < 0.95) return 'EXCUSED';
+  return 'ABSENT';
 }
 
 async function main() {
-  await prisma.attendance.deleteMany({});
-  await prisma.attendanceSession.deleteMany({});
-  await prisma.blog.deleteMany({});
-  await prisma.announcement.deleteMany({});
-  await prisma.user.deleteMany({});
+  console.log('🌱 Starting seeding...');
 
-  const hash = await bcrypt.hash('password123', 10);
+  await prisma.attendance.deleteMany();
+  await prisma.attendanceSession.deleteMany();
+  await prisma.announcement.deleteMany();
+  await prisma.blog.deleteMany();
+  await prisma.user.deleteMany();
 
-  const zidan = await prisma.user.create({
+  console.log('🧹 Database cleaned.');
+
+  const passwordHash = await bcrypt.hash('password123', 10);
+
+  const admin = await prisma.user.create({
     data: {
-      name: 'Muhamad Zidan Indratama',
-      email: 'zidanindratama03@gmail.com',
-      password: hash,
+      name: 'Super Admin',
+      email: 'admin@gunasmash.id',
+      password: passwordHash,
       role: 'ADMIN',
-      avatarUrl: 'https://i.pravatar.cc/256?u=zidanindratama03',
-      createdAt: new Date(),
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
     },
-    select: { id: true, name: true, email: true, role: true },
   });
 
-  const users = [zidan];
+  console.log(`👤 Created Admin: admin@gunasmash.id / password123`);
 
-  for (let i = 0; i < USERS_N; i++) {
-    const name = `${faker.person.firstName()} ${faker.person.lastName()}`;
-    const emailRaw = faker.internet
-      .email({
-        firstName: name.split(' ')[0],
-        lastName: name.split(' ').slice(1).join(' ') || 'user',
-        provider: faker.helpers.arrayElement(['example.com', 'mail.test', 'dev.local']),
-      })
-      .toLowerCase()
-      .replace(/\s+/g, '');
-    const [local, domain] = emailRaw.split('@');
-    const email = `${local}+${Date.now().toString(36)}${faker.string.alphanumeric(3).toLowerCase()}@${domain}`;
+  const usersData = Array.from({ length: CONFIG.USERS_COUNT }).map(() => {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    return {
+      name: `${firstName} ${lastName}`,
+      email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+      password: passwordHash,
+      role: 'MEMBER' as Role,
+      avatarUrl: faker.image.avatar(),
+    };
+  });
 
-    const u = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hash,
-        role: pickRole(i),
-        avatarUrl: faker.datatype.boolean()
-          ? `https://i.pravatar.cc/256?u=${faker.string.uuid()}`
-          : null,
-        createdAt: faker.date.recent({ days: 90 }),
-      },
-      select: { id: true, name: true, email: true, role: true },
-    });
-    users.push(u);
-  }
+  await prisma.user.createMany({ data: usersData });
+  const allUsers = await prisma.user.findMany();
+  const members = allUsers.filter((u) => u.role === 'MEMBER');
 
-  const userIds = users.map((u) => u.id);
-  const anyUser = () => faker.helpers.arrayElement(userIds);
+  console.log(`👥 Created ${members.length} members.`);
 
-  const baseAnnIds = await ensureBaseAnnouncements();
+  const announcementTypes: AnnouncementType[] = [
+    'TRAINING',
+    'SPARRING',
+    'TOURNAMENT',
+    'INFO',
+    'EVENT',
+  ];
 
-  for (let i = 0; i < ANNS_N; i++) {
-    const type = pickAnnouncementType();
+  for (let i = 0; i < CONFIG.ANNOUNCEMENTS_COUNT; i++) {
+    const type = faker.helpers.arrayElement(announcementTypes);
     const title =
-      type === 'RECRUITMENT'
-        ? `Open Recruitment ${toTitleCase(faker.word.noun())}`
-        : type === 'SPARRING'
-          ? `Sparring ${toTitleCase(faker.word.adjective())}`
-          : type === 'TRAINING'
-            ? `Latihan ${toTitleCase(faker.word.adjective())}`
-            : toTitleCase(faker.lorem.words({ min: 2, max: 4 }));
+      type === 'TRAINING'
+        ? `Latihan Rutin ${faker.date.weekday()}`
+        : toTitleCase(faker.lorem.words(3));
 
-    const location = faker.helpers.arrayElement(LOC_POOL);
-    const q = encodeURIComponent(location);
-    const locationLink = faker.datatype.boolean()
-      ? `https://www.google.com/maps/search/?api=1&query=${q}`
-      : null;
-    const imageUrl = faker.datatype.boolean()
-      ? `https://picsum.photos/seed/ann-${faker.string.uuid()}/800/400`
-      : null;
-    const dt = faker.date.between({
+    const datetime = faker.date.between({
       from: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
       to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     });
 
-    await prisma.announcement.create({
+    const announcement = await prisma.announcement.create({
       data: {
         title,
         type,
-        datetime: dt,
-        location,
-        locationLink,
-        imageUrl,
-        content: randomAnnContent(title, type),
-        createdBy: anyUser(),
-        createdAt: faker.date.recent({ days: 60 }),
+        datetime,
+        location: faker.location.streetAddress(),
+        locationLink: faker.datatype.boolean() ? 'https://maps.google.com' : null,
+        imageUrl: faker.image.urlLoremFlickr({ category: 'sports' }),
+        content: faker.lorem.paragraphs(2),
+        createdBy: admin.id,
       },
     });
+
+    if (datetime < new Date()) {
+      const sessionDate = new Date(datetime.getFullYear(), datetime.getMonth(), datetime.getDate());
+
+      const session = await prisma.attendanceSession.create({
+        data: {
+          announcementId: announcement.id,
+          date: sessionDate,
+          state: 'CLOSED',
+          openedAt: datetime,
+          closedAt: new Date(datetime.getTime() + 3 * 60 * 60 * 1000),
+        },
+      });
+
+      const attendees = faker.helpers.arrayElements(
+        members,
+        Math.floor(members.length * CONFIG.ATTENDANCE_RATE),
+      );
+
+      const attendanceData = attendees.map((member) => ({
+        sessionId: session.id,
+        userId: member.id,
+        status: pickAttendanceStatus(),
+        note: faker.datatype.boolean() ? faker.lorem.sentence() : null,
+      }));
+
+      await prisma.attendance.createMany({ data: attendanceData });
+    }
   }
 
-  for (let i = 0; i < BLOGS_N; i++) {
-    const base = faker.lorem.words({ min: 3, max: 6 });
-    const title = toTitleCase(base);
-    const slug = uniqueSlug(title);
-    const content = [
-      `# ${title}`,
-      '',
-      faker.lorem.paragraphs({ min: 2, max: 3 }, '\n\n'),
-      '',
-      '## Section',
-      '',
-      faker.lorem.paragraphs({ min: 2, max: 4 }, '\n\n'),
-      '',
-      `> ${faker.lorem.sentence({ min: 8, max: 14 })}`,
-    ].join('\n');
+  console.log(`📢 Created ${CONFIG.ANNOUNCEMENTS_COUNT} announcements & attendance records.`);
 
-    const tags = faker.helpers.arrayElements(TAG_POOL, { min: 1, max: 4 });
-    const published = faker.datatype.boolean({ probability: 0.6 });
+  for (let i = 0; i < CONFIG.BLOGS_COUNT; i++) {
+    const title = faker.lorem.sentence({ min: 3, max: 6 }).replace('.', '');
 
     await prisma.blog.create({
       data: {
         title,
-        slug,
-        content,
-        coverUrl: faker.datatype.boolean()
-          ? `https://picsum.photos/seed/blog-${faker.string.uuid()}/1200/630`
-          : null,
-        tags,
-        createdBy: anyUser(),
-        published,
-        createdAt: faker.date.recent({ days: 90 }),
+        slug: createSlug(title),
+        content: `
+# ${title}
+
+${faker.lorem.paragraphs(2)}
+
+## Detail
+
+${faker.lorem.paragraphs(3)}
+        `,
+        coverUrl: faker.image.urlLoremFlickr({ category: 'abstract' }),
+        tags: faker.helpers.arrayElements(['tips', 'latihan', 'turnamen', 'kesehatan'], {
+          min: 1,
+          max: 3,
+        }),
+        published: faker.datatype.boolean(),
+        createdBy: admin.id,
       },
     });
   }
 
-  await seedAttendanceForAnnouncements(baseAnnIds);
-
-  console.log(
-    'Done.',
-    `\nAdmin (Zidan) : ${zidan.email}`,
-    `\nUsers         : ${users.length - 1}`,
-    `\nAnnouncements : ${await prisma.announcement.count()}`,
-    `\nBlogs         : ${await prisma.blog.count()}`,
-    `\nSessions      : ${await prisma.attendanceSession.count()}`,
-    `\nAttendances   : ${await prisma.attendance.count()}`,
-  );
+  console.log(`📝 Created ${CONFIG.BLOGS_COUNT} blogs.`);
+  console.log('✅ Seeding completed.');
 }
 
 main()
   .catch((e) => {
-    console.error('Seed error:', e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

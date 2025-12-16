@@ -4,10 +4,10 @@ import csv from 'fast-csv';
 import { Parser } from 'json2csv';
 import multer from 'multer';
 
-import { listUsers, getUser, updateUserRole, removeUserAuto } from './users.service.js';
+import { listUsers, getUser, updateUserRole, removeUserAuto, updateUser } from './users.service.js';
 import { authGuard, rolesGuard } from '../common/auth/guards.js';
 import { ok } from '../common/http/response.js';
-import { PromoteSchema } from '../common/validators/schemas.js';
+import { PromoteSchema, UserUpdateSchema } from '../common/validators/schemas.js';
 import { prisma } from '../prisma/client.js';
 
 export const usersRouter = Router();
@@ -24,6 +24,18 @@ usersRouter.get('/', authGuard, rolesGuard(['ADMIN']), async (req, res, next) =>
 usersRouter.get('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
     const data = await getUser(req.params.id as string);
+    res.json(ok(data));
+  } catch (e) {
+    next(e);
+  }
+});
+
+usersRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
+  try {
+    const dto = UserUpdateSchema.parse(req.body);
+
+    const data = await updateUser(req.params.id as string, dto);
+
     res.json(ok(data));
   } catch (e) {
     next(e);

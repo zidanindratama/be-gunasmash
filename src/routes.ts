@@ -29,6 +29,6 @@ router.use('/api/stats', statsRouter);
 router.use('/api/auth', authRouter);
 router.use('/api/users', usersRouter);
 router.use('/api/announcements', announcementsRouter);
-router.use('/api/attendance', attendanceRouter);
+router.use('/api/attendances', attendanceRouter);
 router.use('/api/blogs', blogsRouter);
 router.use('/api/uploads', uploadRouter);

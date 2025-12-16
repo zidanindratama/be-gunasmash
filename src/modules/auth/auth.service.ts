@@ -32,3 +32,37 @@ export async function issueTokens(userId: string) {
     refreshToken,
   };
 }
+
+export async function updateMyProfile(
+  userId: string,
+  input: { name?: string; avatarUrl?: string },
+) {
+  if (!input.name && !input.avatarUrl) {
+    throw Object.assign(new Error('No fields provided for update'), { status: 400 });
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: input.name,
+      avatarUrl: input.avatarUrl,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatarUrl: true,
+      createdAt: true,
+    },
+  });
+
+  return {
+    id: updatedUser.id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    avatarUrl: updatedUser.avatarUrl,
+    createdAt: updatedUser.createdAt,
+  };
+}

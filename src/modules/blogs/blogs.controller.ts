@@ -16,9 +16,9 @@ blogsRouter.get('/', async (req, res, next) => {
   }
 });
 
-blogsRouter.get('/:id', async (req, res, next) => {
+blogsRouter.get('/:slug', async (req, res, next) => {
   try {
-    const data = await getBlog(req.params.id);
+    const data = await getBlog(req.params.slug as string);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -35,19 +35,19 @@ blogsRouter.post('/', authGuard, rolesGuard(['ADMIN']), async (req, res, next) =
   }
 });
 
-blogsRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
+blogsRouter.patch('/:slug', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
     const dto = BlogSchema.partial().parse(req.body);
-    const data = await updateBlog(req.params.id as string, dto);
+    const data = await updateBlog(req.params.slug as string, dto);
     res.json(ok(data));
   } catch (e) {
     next(e);
   }
 });
 
-blogsRouter.delete('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
+blogsRouter.delete('/:slug', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await removeBlog(req.params.id as string);
+    const data = await removeBlog(req.params.slug as string);
     res.json(ok(data));
   } catch (e) {
     next(e);

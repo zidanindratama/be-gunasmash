@@ -31,7 +31,9 @@ function normalizeTypes(input: unknown): AnnouncementType[] {
 
 export async function listAnnouncements(q: any) {
   const { page, limit, skip, search, orderBy, where } = parseListQuery(q);
+
   const cond: Prisma.AnnouncementWhereInput = { ...where };
+
   if (search) {
     cond.OR = [
       { title: { contains: search, mode: 'insensitive' } },
@@ -39,9 +41,13 @@ export async function listAnnouncements(q: any) {
       { content: { contains: search, mode: 'insensitive' } },
     ];
   }
-  const types = normalizeTypes(q?.type);
-  if (types.length === 1) cond.type = types[0];
-  else if (types.length > 1) cond.type = { in: types };
+
+  const rawType = q?.type || where?.type;
+  const types = normalizeTypes(rawType);
+
+  if (types.length > 0) {
+    cond.type = { in: types };
+  }
 
   const [items, total] = await Promise.all([
     prisma.announcement.findMany({
@@ -49,11 +55,45 @@ export async function listAnnouncements(q: any) {
       skip,
       take: limit,
       orderBy: orderBy || { datetime: 'desc' },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+      },
     }),
     prisma.announcement.count({ where: cond }),
   ]);
 
-  return shapeList(items, total, page, limit);
+  const shaped = shapeList(
+    items.map((a) => ({
+      id: a.id,
+      title: a.title,
+      type: a.type,
+      datetime: a.datetime,
+      location: a.location,
+      locationLink: a.locationLink,
+      imageUrl: a.imageUrl,
+      content: a.content,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+      author: a.author
+        ? {
+            id: a.author.id,
+            name: a.author.name,
+            avatarUrl: a.author.avatarUrl,
+          }
+        : null,
+    })),
+    total,
+    page,
+    limit,
+  );
+
+  return shaped;
 }
 
 export async function createAnnouncement(
