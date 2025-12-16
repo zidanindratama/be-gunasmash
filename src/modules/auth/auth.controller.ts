@@ -9,6 +9,15 @@ import { SignInSchema, SignUpSchema } from '../common/validators/schemas.js';
 import { prisma } from '../prisma/client.js';
 import z, { ZodError } from 'zod';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: isProduction ? ('lax' as const) : undefined,
+  secure: isProduction,
+  path: '/',
+};
+
 type Role = 'ADMIN' | 'MEMBER';
 
 function isJwtPayload(v: unknown): v is { sub: string; role: Role } {
@@ -26,7 +35,7 @@ authRouter.post('/sign-up', async (req, res, next) => {
   try {
     const dto = SignUpSchema.parse(req.body);
     const out = await signUp({ name: dto.name, email: dto.email, password: dto.password });
-    res.cookie('refreshToken', out.refreshToken, { httpOnly: true, sameSite: 'lax' });
+    res.cookie('refreshToken', out.refreshToken, cookieOptions);
     res.json(ok({ accessToken: out.accessToken, user: out.user }));
   } catch (e) {
     next(e);
@@ -44,7 +53,7 @@ authRouter.post('/sign-in', (req, res, next) => {
       if (err) throw err;
       if (!u) throw Object.assign(new Error('Invalid credentials'), { status: 401 });
       const out = await issueTokens(u.id as string);
-      res.cookie('refreshToken', out.refreshToken, { httpOnly: true, sameSite: 'lax' });
+      res.cookie('refreshToken', out.refreshToken, cookieOptions);
       res.json(ok({ accessToken: out.accessToken, user: out.user }));
     } catch (e2) {
       next(e2);
@@ -58,8 +67,8 @@ authRouter.post('/refresh', async (req, res, next) => {
     if (!token) throw Object.assign(new Error('Unauthorized'), { status: 401 });
     const payload = verifyRefresh(token);
     if (!isJwtPayload(payload)) throw Object.assign(new Error('Unauthorized'), { status: 401 });
-    const out = await issueTokens(payload.sub);
-    res.cookie('refreshToken', out.refreshToken, { httpOnly: true, sameSite: 'lax' });
+    const out = await issueTokens(payload.sub); // Menggunakan cookieOptions yang diperbaiki
+    res.cookie('refreshToken', out.refreshToken, cookieOptions);
     res.json(ok({ accessToken: out.accessToken, user: out.user }));
   } catch (e) {
     next(e);
@@ -67,7 +76,7 @@ authRouter.post('/refresh', async (req, res, next) => {
 });
 
 authRouter.delete('/logout', async (_req, res) => {
-  res.clearCookie('refreshToken');
+  res.clearCookie('refreshToken', { path: '/' });
   res.json(ok({}));
 });
 
