@@ -1,5 +1,5 @@
 import { Router } from 'express';
-
+import { ZodError, z } from 'zod';
 import { signUp, issueTokens, updateMyProfile } from './auth.service.js';
 import { passport } from './passport-local.js';
 import { authGuard } from '../common/auth/guards.js';
@@ -7,15 +7,21 @@ import { verifyRefresh } from '../common/auth/jwt.js';
 import { ok } from '../common/http/response.js';
 import { SignInSchema, SignUpSchema } from '../common/validators/schemas.js';
 import { prisma } from '../prisma/client.js';
-import z, { ZodError } from 'zod';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-const cookieOptions = {
+type SameSiteString = 'lax' | 'none' | 'strict';
+
+const baseCookieOptions = {
   httpOnly: true,
-  sameSite: isProduction ? ('lax' as const) : undefined,
   secure: isProduction,
   path: '/',
+};
+
+const refreshCookieOptions = {
+  ...baseCookieOptions,
+  sameSite: (isProduction ? 'lax' : 'none') as SameSiteString,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 type Role = 'ADMIN' | 'MEMBER';
@@ -34,9 +40,21 @@ export const authRouter = Router();
 authRouter.post('/sign-up', async (req, res, next) => {
   try {
     const dto = SignUpSchema.parse(req.body);
-    const out = await signUp({ name: dto.name, email: dto.email, password: dto.password });
-    res.cookie('refreshToken', out.refreshToken, cookieOptions);
-    res.json(ok({ accessToken: out.accessToken, user: out.user }));
+
+    const out = await signUp({
+      name: dto.name,
+      email: dto.email,
+      password: dto.password,
+    });
+
+    res.cookie('refreshToken', out.refreshToken, refreshCookieOptions);
+
+    res.json(
+      ok({
+        accessToken: out.accessToken,
+        user: out.user,
+      }),
+    );
   } catch (e) {
     next(e);
   }
@@ -45,16 +63,25 @@ authRouter.post('/sign-up', async (req, res, next) => {
 authRouter.post('/sign-in', (req, res, next) => {
   try {
     SignInSchema.parse(req.body);
-  } catch (e) {
+  } catch {
     return next(Object.assign(new Error('Validation error'), { status: 400 }));
   }
+
   passport.authenticate('local', async (err: unknown, u: any) => {
     try {
       if (err) throw err;
       if (!u) throw Object.assign(new Error('Invalid credentials'), { status: 401 });
+
       const out = await issueTokens(u.id as string);
-      res.cookie('refreshToken', out.refreshToken, cookieOptions);
-      res.json(ok({ accessToken: out.accessToken, user: out.user }));
+
+      res.cookie('refreshToken', out.refreshToken, refreshCookieOptions);
+
+      res.json(
+        ok({
+          accessToken: out.accessToken,
+          user: out.user,
+        }),
+      );
     } catch (e2) {
       next(e2);
     }
@@ -65,11 +92,22 @@ authRouter.post('/refresh', async (req, res, next) => {
   try {
     const token = req.cookies?.refreshToken;
     if (!token) throw Object.assign(new Error('Unauthorized'), { status: 401 });
+
     const payload = verifyRefresh(token);
-    if (!isJwtPayload(payload)) throw Object.assign(new Error('Unauthorized'), { status: 401 });
-    const out = await issueTokens(payload.sub); // Menggunakan cookieOptions yang diperbaiki
-    res.cookie('refreshToken', out.refreshToken, cookieOptions);
-    res.json(ok({ accessToken: out.accessToken, user: out.user }));
+    if (!isJwtPayload(payload)) {
+      throw Object.assign(new Error('Unauthorized'), { status: 401 });
+    }
+
+    const out = await issueTokens(payload.sub);
+
+    res.cookie('refreshToken', out.refreshToken, refreshCookieOptions);
+
+    res.json(
+      ok({
+        accessToken: out.accessToken,
+        user: out.user,
+      }),
+    );
   } catch (e) {
     next(e);
   }
@@ -77,13 +115,17 @@ authRouter.post('/refresh', async (req, res, next) => {
 
 authRouter.delete('/logout', async (_req, res) => {
   res.clearCookie('refreshToken', { path: '/' });
-  res.json(ok({}));
+  res.json(ok({ message: 'Logged out successfully' }));
 });
 
 authRouter.get('/me', authGuard, async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: (req as any).user.sub } });
+    const user = await prisma.user.findUnique({
+      where: { id: (req as any).user.sub },
+    });
+
     if (!user) throw Object.assign(new Error('User not found'), { status: 404 });
+
     res.json(
       ok({
         id: user.id,
@@ -102,20 +144,17 @@ authRouter.patch('/me', authGuard, async (req, res, next) => {
   try {
     const updateSchema = z
       .object({
-        name: z.string().min(2, 'Name must be at least 2 characters.').optional(),
-        avatarUrl: z.string().url('Invalid URL format for avatar.').optional(),
+        name: z.string().min(2).optional(),
+        avatarUrl: z.string().url().optional(),
       })
-      .refine((data) => data.name !== undefined || data.avatarUrl !== undefined, {
-        message: 'At least one field (name or avatarUrl) must be provided for update.',
-        path: ['name', 'avatarUrl'],
+      .refine((d) => d.name || d.avatarUrl, {
+        message: 'At least one field required',
       });
 
     const dto = updateSchema.parse(req.body);
-
     const userId = (req as any).user.sub;
 
     const updatedUser = await updateMyProfile(userId, dto);
-
     res.json(ok(updatedUser));
   } catch (e) {
     if (e instanceof ZodError) {
