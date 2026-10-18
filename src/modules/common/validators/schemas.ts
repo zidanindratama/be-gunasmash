@@ -3,12 +3,12 @@ import { z } from 'zod';
 
 export const SignUpSchema = z.object({
   name: z.string().min(2).trim(),
-  email: z.string().email().trim(),
+  email: z.string().trim().email(),
   password: z.string().min(6),
 });
 
 export const SignInSchema = z.object({
-  email: z.string().email().trim(),
+  email: z.string().trim().email(),
   password: z.string().min(6),
 });
 
@@ -111,7 +111,7 @@ export const AttendanceListQuerySchema = z.object({
 
 export const UserUpdateSchema = z.object({
   name: z.string().min(2).trim().optional(),
-  email: z.string().email().trim().optional(),
+  email: z.string().trim().email().optional(),
   role: z.nativeEnum(Role).optional(),
   avatarUrl: z.string().url().optional().nullable(),
 });

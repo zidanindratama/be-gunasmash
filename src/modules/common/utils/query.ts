@@ -50,7 +50,7 @@ export function parseListQuery(q: any) {
   if (filterStr) {
     try {
       const obj = JSON.parse(filterStr);
-      if (obj && typeof obj === 'object') where = obj;
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) where = obj;
     } catch {
       // Ignore malformed optional filters and use the default empty filter.
     }

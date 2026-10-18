@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { faker } from '@faker-js/faker';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -23,40 +26,53 @@ function toTitleCase(str: string) {
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 }
 
-function createSlug(title: string) {
+export function createSlug(title: string, now: () => number = Date.now) {
   return (
     title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '') +
     '-' +
-    Date.now().toString(36)
+    now().toString(36)
   );
 }
 
-function pickAttendanceStatus(): AttendanceStatus {
-  const rand = Math.random();
+export function pickAttendanceStatus(random: () => number = Math.random): AttendanceStatus {
+  const rand = random();
   if (rand < 0.75) return 'PRESENT';
   if (rand < 0.85) return 'LATE';
   if (rand < 0.95) return 'EXCUSED';
   return 'ABSENT';
 }
 
-async function main() {
-  console.log('🌱 Starting seeding...');
+export async function seedDatabase(dependencies: {
+  prismaClient?: PrismaClient;
+  fakerApi?: typeof faker;
+  hashPassword?: typeof bcrypt.hash;
+  now?: () => number;
+  random?: () => number;
+  log?: (...args: unknown[]) => void;
+} = {}) {
+  const client = dependencies.prismaClient ?? prisma;
+  const fake = dependencies.fakerApi ?? faker;
+  const hashPassword = dependencies.hashPassword ?? bcrypt.hash;
+  const now = dependencies.now ?? Date.now;
+  const random = dependencies.random ?? Math.random;
+  const log = dependencies.log ?? console.log;
+  log('🌱 Starting seeding...');
 
-  await prisma.attendance.deleteMany();
-  await prisma.attendanceSession.deleteMany();
-  await prisma.announcement.deleteMany();
-  await prisma.blog.deleteMany();
-  await prisma.user.deleteMany();
+  await client.attendance.deleteMany();
+  await client.attendanceSession.deleteMany();
+  await client.announcement.deleteMany();
+  await client.blog.deleteMany();
+  await client.user.deleteMany();
 
-  console.log('🧹 Database cleaned.');
+  log('🧹 Database cleaned.');
 
-  const passwordHash = await bcrypt.hash('password123', 10);
-  const testPasswordHash = await bcrypt.hash(TEST_ACCOUNTS.password, 10);
+  const passwordHash = await hashPassword('password123', 10);
+  const testPasswordHash = await hashPassword(TEST_ACCOUNTS.password, 10);
 
-  const admin = await prisma.user.create({
+  const admin = await client.user.create({
     data: {
       name: TEST_ACCOUNTS.admin.name,
       email: TEST_ACCOUNTS.admin.email,
@@ -66,7 +82,7 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
+  await client.user.create({
     data: {
       name: TEST_ACCOUNTS.member.name,
       email: TEST_ACCOUNTS.member.email,
@@ -76,25 +92,25 @@ async function main() {
     },
   });
 
-  console.log(`👤 Created test accounts: ${TEST_ACCOUNTS.admin.email}, ${TEST_ACCOUNTS.member.email}`);
+  log(`👤 Created test accounts: ${TEST_ACCOUNTS.admin.email}, ${TEST_ACCOUNTS.member.email}`);
 
   const usersData = Array.from({ length: CONFIG.USERS_COUNT }).map(() => {
-    const firstName = faker.person.firstName();
-    const lastName = faker.person.lastName();
+    const firstName = fake.person.firstName();
+    const lastName = fake.person.lastName();
     return {
       name: `${firstName} ${lastName}`,
-      email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+      email: fake.internet.email({ firstName, lastName }).toLowerCase(),
       password: passwordHash,
       role: 'MEMBER' as Role,
-      avatarUrl: faker.image.avatar(),
+      avatarUrl: fake.image.avatar(),
     };
   });
 
-  await prisma.user.createMany({ data: usersData });
-  const allUsers = await prisma.user.findMany();
+  await client.user.createMany({ data: usersData });
+  const allUsers = await client.user.findMany();
   const members = allUsers.filter((u) => u.role === 'MEMBER');
 
-  console.log(`👥 Created ${members.length} members.`);
+  log(`👥 Created ${members.length} members.`);
 
   const announcementTypes: AnnouncementType[] = [
     'TRAINING',
@@ -105,26 +121,26 @@ async function main() {
   ];
 
   for (let i = 0; i < CONFIG.ANNOUNCEMENTS_COUNT; i++) {
-    const type = faker.helpers.arrayElement(announcementTypes);
+    const type = fake.helpers.arrayElement(announcementTypes);
     const title =
       type === 'TRAINING'
-        ? `Latihan Rutin ${faker.date.weekday()}`
-        : toTitleCase(faker.lorem.words(3));
+        ? `Latihan Rutin ${fake.date.weekday()}`
+        : toTitleCase(fake.lorem.words(3));
 
-    const datetime = faker.date.between({
-      from: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-      to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    const datetime = fake.date.between({
+      from: new Date(now() - 60 * 24 * 60 * 60 * 1000),
+      to: new Date(now() + 30 * 24 * 60 * 60 * 1000),
     });
 
-    const announcement = await prisma.announcement.create({
+    const announcement = await client.announcement.create({
       data: {
         title,
         type,
         datetime,
-        location: faker.location.streetAddress(),
-        locationLink: faker.datatype.boolean() ? 'https://maps.google.com' : null,
-        imageUrl: faker.image.urlLoremFlickr({ category: 'sports' }),
-        content: faker.lorem.paragraphs(2),
+        location: fake.location.streetAddress(),
+        locationLink: fake.datatype.boolean() ? 'https://maps.google.com' : null,
+        imageUrl: fake.image.urlLoremFlickr({ category: 'sports' }),
+        content: fake.lorem.paragraphs(2),
         createdBy: admin.id,
       },
     });
@@ -132,7 +148,7 @@ async function main() {
     if (datetime < new Date()) {
       const sessionDate = new Date(datetime.getFullYear(), datetime.getMonth(), datetime.getDate());
 
-      const session = await prisma.attendanceSession.create({
+      const session = await client.attendanceSession.create({
         data: {
           announcementId: announcement.id,
           date: sessionDate,
@@ -142,7 +158,7 @@ async function main() {
         },
       });
 
-      const attendees = faker.helpers.arrayElements(
+      const attendees = fake.helpers.arrayElements(
         members,
         Math.floor(members.length * CONFIG.ATTENDANCE_RATE),
       );
@@ -150,52 +166,59 @@ async function main() {
       const attendanceData = attendees.map((member) => ({
         sessionId: session.id,
         userId: member.id,
-        status: pickAttendanceStatus(),
-        note: faker.datatype.boolean() ? faker.lorem.sentence() : null,
+        status: pickAttendanceStatus(random),
+        note: fake.datatype.boolean() ? fake.lorem.sentence() : null,
       }));
 
-      await prisma.attendance.createMany({ data: attendanceData });
+      await client.attendance.createMany({ data: attendanceData });
     }
   }
 
-  console.log(`📢 Created ${CONFIG.ANNOUNCEMENTS_COUNT} announcements & attendance records.`);
+  log(`📢 Created ${CONFIG.ANNOUNCEMENTS_COUNT} announcements & attendance records.`);
 
   for (let i = 0; i < CONFIG.BLOGS_COUNT; i++) {
-    const title = faker.lorem.sentence({ min: 3, max: 6 }).replace('.', '');
+    const title = fake.lorem.sentence({ min: 3, max: 6 }).replace('.', '');
 
-    await prisma.blog.create({
+    await client.blog.create({
       data: {
         title,
-        slug: createSlug(title),
+        slug: createSlug(title, now),
         content: `
 # ${title}
 
-${faker.lorem.paragraphs(2)}
+${fake.lorem.paragraphs(2)}
 
 ## Detail
 
-${faker.lorem.paragraphs(3)}
+${fake.lorem.paragraphs(3)}
         `,
-        coverUrl: faker.image.urlLoremFlickr({ category: 'abstract' }),
-        tags: faker.helpers.arrayElements(['tips', 'latihan', 'turnamen', 'kesehatan'], {
+        coverUrl: fake.image.urlLoremFlickr({ category: 'abstract' }),
+        tags: fake.helpers.arrayElements(['tips', 'latihan', 'turnamen', 'kesehatan'], {
           min: 1,
           max: 3,
         }),
-        published: faker.datatype.boolean(),
+        published: fake.datatype.boolean(),
         createdBy: admin.id,
       },
     });
   }
 
-  console.log(`📝 Created ${CONFIG.BLOGS_COUNT} blogs.`);
-  console.log('✅ Seeding completed.');
+  log(`📝 Created ${CONFIG.BLOGS_COUNT} blogs.`);
+  log('✅ Seeding completed.');
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
+
+async function main() {
+  try {
+    await seedDatabase({ prismaClient: prisma });
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  } finally {
     await prisma.$disconnect();
-  });
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  void main();
+}
