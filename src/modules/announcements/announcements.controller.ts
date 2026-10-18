@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import {
   createAnnouncement,
   getAnnouncement,
@@ -6,9 +7,9 @@ import {
   removeAnnouncement,
   updateAnnouncement,
 } from './announcements.service.js';
-import { ok } from '../common/http/response.js';
 import { authGuard, rolesGuard } from '../common/auth/guards.js';
-import { AnnouncementSchema } from '../common/validators/schemas.js';
+import { ok } from '../common/http/response.js';
+import { AnnouncementSchema, AnnouncementUpdateSchema, MongoIdSchema } from '../common/validators/schemas.js';
 
 export const announcementsRouter = Router();
 
@@ -23,7 +24,8 @@ announcementsRouter.get('/', async (req, res, next) => {
 
 announcementsRouter.get('/:id', async (req, res, next) => {
   try {
-    const data = await getAnnouncement(req.params.id);
+    const id = MongoIdSchema.parse(req.params.id);
+    const data = await getAnnouncement(id);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -43,8 +45,9 @@ announcementsRouter.post('/', authGuard, rolesGuard(['ADMIN']), async (req, res,
 
 announcementsRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const dto = AnnouncementSchema.partial().parse(req.body);
-    const data = await updateAnnouncement(req.params.id as string, dto);
+    const id = MongoIdSchema.parse(req.params.id);
+    const dto = AnnouncementUpdateSchema.parse(req.body);
+    const data = await updateAnnouncement(id, dto);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -53,7 +56,8 @@ announcementsRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, 
 
 announcementsRouter.delete('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await removeAnnouncement(req.params.id as string);
+    const id = MongoIdSchema.parse(req.params.id);
+    const data = await removeAnnouncement(id);
     res.json(ok(data));
   } catch (e) {
     next(e);

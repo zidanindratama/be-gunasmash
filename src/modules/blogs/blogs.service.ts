@@ -1,9 +1,10 @@
-import type { Prisma } from '@prisma/client';
 
 import { parseListQuery, shapeList } from '../common/utils/query.js';
 import { prisma } from '../prisma/client.js';
 
-export async function listBlogs(q: any) {
+import type { Prisma } from '@prisma/client';
+
+export async function listBlogs(q: any, canViewUnpublished = false) {
   const { page, limit, skip, search, orderBy, where } = parseListQuery(q);
 
   const cond: Prisma.BlogWhereInput = { ...where };
@@ -16,7 +17,7 @@ export async function listBlogs(q: any) {
     ];
   }
 
-  if (cond.published !== undefined) {
+  if (canViewUnpublished && cond.published !== undefined) {
     const val = Array.isArray(cond.published) ? cond.published[0] : cond.published;
 
     if (String(val) === 'true') {
@@ -26,6 +27,21 @@ export async function listBlogs(q: any) {
     } else {
       delete cond.published;
     }
+  }
+
+  if (canViewUnpublished && q?.published !== undefined) {
+    const requested = Array.isArray(q.published) ? q.published[0] : q.published;
+    if (String(requested) === 'true') cond.published = true;
+    else if (String(requested) === 'false') cond.published = false;
+  }
+
+  if (!canViewUnpublished) {
+    cond.published = true;
+  }
+
+  const tag = Array.isArray(q?.tag) ? q.tag[0] : q?.tag;
+  if (typeof tag === 'string' && tag.trim()) {
+    cond.tags = { has: tag.trim() };
   }
 
   const [items, total] = await Promise.all([

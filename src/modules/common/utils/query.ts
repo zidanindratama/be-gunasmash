@@ -19,7 +19,7 @@ export function parseListQuery(q: any) {
   const pageStr = pickFirst(q?.page) ?? '1';
   const limitStr = pickFirst(q?.limit) ?? '10';
   const searchStr = pickFirst(q?.search) ?? '';
-  const sortStr = pickFirst(q?.sort);
+  const sortStr = pickFirst(q?.sort) ?? pickFirst(q?.orderBy);
   const filterStr = pickFirst(q?.filter);
 
   const page = Math.max(parseInt(pageStr, 10) || 1, 1);
@@ -30,9 +30,20 @@ export function parseListQuery(q: any) {
 
   let orderBy: Record<string, SortDir> | undefined;
   if (sortStr) {
-    const [field, dir] = sortStr.split(':');
-    const d: SortDir = dir === 'desc' ? 'desc' : 'asc';
-    if (field) orderBy = { [field]: d };
+    try {
+      const parsed = JSON.parse(sortStr);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const entries = Object.entries(parsed).filter(
+          ([field, direction]) =>
+            field.length > 0 && (direction === 'asc' || direction === 'desc'),
+        );
+        if (entries.length > 0) orderBy = Object.fromEntries(entries) as Record<string, SortDir>;
+      }
+    } catch {
+      const [field, dir] = sortStr.split(':');
+      const d: SortDir = dir === 'desc' ? 'desc' : 'asc';
+      if (field) orderBy = { [field]: d };
+    }
   }
 
   let where: Record<string, any> = {};
@@ -40,7 +51,9 @@ export function parseListQuery(q: any) {
     try {
       const obj = JSON.parse(filterStr);
       if (obj && typeof obj === 'object') where = obj;
-    } catch {}
+    } catch {
+      // Ignore malformed optional filters and use the default empty filter.
+    }
   }
 
   return { page, limit, skip, search, orderBy, where };

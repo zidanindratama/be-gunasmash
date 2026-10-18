@@ -1,4 +1,5 @@
 import { verifyAccess } from './jwt.js';
+
 import type { NextFunction, Request, Response } from 'express';
 
 export function authGuard(req: Request, res: Response, next: NextFunction) {
@@ -26,7 +27,7 @@ export function authGuard(req: Request, res: Response, next: NextFunction) {
     (req as any).user = payload;
 
     next();
-  } catch (err) {
+  } catch {
     res.status(401).json({
       success: false,
       error: { message: 'Unauthorized: Token invalid or expired' },

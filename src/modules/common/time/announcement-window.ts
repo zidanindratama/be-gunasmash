@@ -1,4 +1,5 @@
 const ID_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+export const ATTENDANCE_WINDOW_HOURS = 3;
 
 function parseHM(str: string) {
   const [h = '0', m = '0'] = str.split('.');

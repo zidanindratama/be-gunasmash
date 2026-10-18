@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { AttendanceStatus, Role } from '@prisma/client';
+import { z } from 'zod';
 
 export const SignUpSchema = z.object({
   name: z.string().min(2).trim(),
@@ -25,6 +25,18 @@ export const AnnouncementSchema = z.object({
 });
 export type AnnouncementInput = z.infer<typeof AnnouncementSchema>;
 
+export const AnnouncementUpdateSchema = z.object({
+  title: z.string().min(2).trim().optional(),
+  type: z.enum(['TRAINING', 'SPARRING', 'TOURNAMENT', 'BRIEFING', 'RECRUITMENT', 'EVENT', 'INFO']).optional(),
+  datetime: z.string().datetime().optional(),
+  location: z.string().min(2).trim().optional(),
+  locationLink: z.string().url().optional().nullable(),
+  imageUrl: z.string().url().optional().nullable(),
+  content: z.string().min(1).optional(),
+});
+
+export const MongoIdSchema = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid ID format');
+
 export const BlogSchema = z.object({
   title: z.string().min(2).trim(),
   slug: z.string().min(2).trim(),
@@ -34,6 +46,15 @@ export const BlogSchema = z.object({
   published: z.coerce.boolean().default(false),
 });
 export type BlogInput = z.infer<typeof BlogSchema>;
+
+export const BlogUpdateSchema = z.object({
+  title: z.string().min(2).trim().optional(),
+  slug: z.string().min(2).trim().optional(),
+  content: z.string().min(1).optional(),
+  coverUrl: z.string().url().optional().nullable(),
+  tags: z.array(z.string().min(1)).optional(),
+  published: z.boolean().optional(),
+});
 
 export const PromoteSchema = z.object({
   role: z.nativeEnum(Role),

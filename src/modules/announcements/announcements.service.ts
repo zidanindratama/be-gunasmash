@@ -1,6 +1,7 @@
-import type { Prisma, AnnouncementType } from '@prisma/client';
 import { parseListQuery, shapeList } from '../common/utils/query.js';
 import { prisma } from '../prisma/client.js';
+
+import type { Prisma, AnnouncementType } from '@prisma/client';
 
 const ANN_TYPES: AnnouncementType[] = [
   'TRAINING',

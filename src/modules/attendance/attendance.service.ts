@@ -1,12 +1,16 @@
-import { AttendanceStatus, Prisma } from '@prisma/client';
-import { prisma } from '../prisma/client.js';
-import type { SessionQueryDto, AttendanceListQueryDto } from '../common/validators/schemas.js';
+import { AttendanceStatus } from '@prisma/client';
+
 import {
+  ATTENDANCE_WINDOW_HOURS,
   isSameLocalDate,
   normalizeLocalDate,
   parseYMD,
 } from '../common/time/announcement-window.js';
 import { parseListQuery, shapeList } from '../common/utils/query.js';
+import { prisma } from '../prisma/client.js';
+
+import type { SessionQueryDto } from '../common/validators/schemas.js';
+import type { Prisma } from '@prisma/client';
 
 async function getOrCreateSession(announcementId: string, date: Date) {
   const sessionDate = normalizeLocalDate(date);
@@ -35,7 +39,18 @@ export async function memberCheckIn(userId: string, announcementId: string, note
     err.status = 403;
     throw err;
   }
+  const closesAt = annDate.getTime() + ATTENDANCE_WINDOW_HOURS * 60 * 60 * 1000;
+  if (now.getTime() > closesAt) {
+    const err: any = new Error('Attendance window has closed for this schedule');
+    err.status = 403;
+    throw err;
+  }
   const session = await getOrCreateSession(announcementId, annDate);
+  if (session.state === 'CLOSED') {
+    const err: any = new Error('Attendance session is closed');
+    err.status = 403;
+    throw err;
+  }
   const att = await prisma.attendance.upsert({
     where: { sessionId_userId: { sessionId: session.id, userId } },
     update: { status: AttendanceStatus.PRESENT, note },
@@ -161,7 +176,14 @@ export async function sessionSummary(query: SessionQueryDto) {
 
     return {
       session: null,
-      counts: { totalMembers, present: 0, absent: totalMembers },
+      counts: {
+        totalMembers,
+        attended: 0,
+        present: 0,
+        late: 0,
+        excused: 0,
+        absent: totalMembers,
+      },
       presentUsers: [],
       absentUsers: await prisma.user.findMany({
         where: absentUsersWhere,
@@ -175,10 +197,15 @@ export async function sessionSummary(query: SessionQueryDto) {
 
   const attRows = await prisma.attendance.findMany({
     where: { sessionId: session.id },
-    select: { userId: true },
+    select: { userId: true, status: true },
   });
 
   const presentIds = Array.from(new Set(attRows.map((r) => r.userId)));
+  const statusCounts = {
+    present: attRows.filter((row) => row.status === 'PRESENT').length,
+    late: attRows.filter((row) => row.status === 'LATE').length,
+    excused: attRows.filter((row) => row.status === 'EXCUSED').length,
+  };
 
   const presentUsersWhere: Prisma.UserWhereInput = {
     id: { in: presentIds },
@@ -194,6 +221,11 @@ export async function sessionSummary(query: SessionQueryDto) {
         take: limit,
       })
     : [];
+  const statusByUserId = new Map(attRows.map((row) => [row.userId, row.status]));
+  const presentUsersWithStatus = presentUsers.map((user) => ({
+    ...user,
+    attendanceStatus: statusByUserId.get(user.id) ?? 'PRESENT',
+  }));
 
   const absentUsersWhere: Prisma.UserWhereInput = {
     role: 'MEMBER',
@@ -213,10 +245,11 @@ export async function sessionSummary(query: SessionQueryDto) {
     session,
     counts: {
       totalMembers,
-      present: presentIds.length,
+      attended: presentIds.length,
+      ...statusCounts,
       absent: Math.max(0, totalMembers - presentIds.length),
     },
-    presentUsers,
+    presentUsers: presentUsersWithStatus,
     absentUsers,
   };
 }
@@ -225,7 +258,9 @@ export async function exportSessionCsv(query: SessionQueryDto) {
   const sum = await sessionSummary(query);
   const lines = [
     'type,name,email',
-    ...sum.presentUsers.map((u) => `present,${csvSafe(u.name)},${csvSafe(u.email)}`),
+    ...sum.presentUsers.map(
+      (u) => `${u.attendanceStatus.toLowerCase()},${csvSafe(u.name)},${csvSafe(u.email)}`,
+    ),
     ...sum.absentUsers.map((u) => `absent,${csvSafe(u.name)},${csvSafe(u.email)}`),
   ];
   return lines.join('\n');
@@ -272,7 +307,16 @@ export async function createSession(
 }
 
 export async function listSessions(q: any) {
-  const { page, limit, skip, search, orderBy } = parseListQuery(q);
+  const { page, limit, skip, search, orderBy, where: filters } = parseListQuery(q);
+  const requestedSort = orderBy ? Object.entries(orderBy)[0] : undefined;
+  const sessionOrderBy: Prisma.AttendanceSessionOrderByWithRelationInput =
+    requestedSort?.[0] === 'title'
+      ? { announcement: { title: requestedSort[1] } }
+      : requestedSort?.[0] === 'status'
+        ? { state: requestedSort[1] }
+        : requestedSort?.[0] === 'date'
+          ? { date: requestedSort[1] }
+          : { date: 'desc' };
 
   const where: Prisma.AttendanceSessionWhereInput = {};
 
@@ -282,8 +326,17 @@ export async function listSessions(q: any) {
     };
   }
 
-  if (q.status) {
-    where.state = q.status;
+  const requestedStatus = filters.status ?? q.status;
+  if (requestedStatus) {
+    const statuses = (Array.isArray(requestedStatus) ? requestedStatus : [requestedStatus])
+      .map(String)
+      .filter((status): status is 'OPEN' | 'CLOSED' => status === 'OPEN' || status === 'CLOSED');
+
+    if (statuses.length === 1) {
+      where.state = statuses[0];
+    } else if (statuses.length > 1) {
+      where.state = { in: statuses };
+    }
   }
 
   const [items, total] = await Promise.all([
@@ -291,7 +344,7 @@ export async function listSessions(q: any) {
       where,
       skip,
       take: limit,
-      orderBy: { date: 'desc' },
+      orderBy: sessionOrderBy,
       include: {
         announcement: {
           select: { title: true, datetime: true },
@@ -326,6 +379,12 @@ export async function listSessions(q: any) {
 }
 
 export async function getSessionDetail(sessionId: string) {
+  if (!/^[a-f\d]{24}$/i.test(sessionId)) {
+    const err: any = new Error('Attendance Session not found');
+    err.status = 404;
+    throw err;
+  }
+
   const session = await prisma.attendanceSession.findUnique({
     where: { id: sessionId },
     select: {

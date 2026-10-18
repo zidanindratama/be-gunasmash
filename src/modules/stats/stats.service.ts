@@ -1,6 +1,7 @@
 import { AttendanceStatus } from '@prisma/client';
-import { prisma } from '../prisma/client.js';
+
 import { normalizeLocalDate, parseYMD } from '../common/time/announcement-window.js';
+import { prisma } from '../prisma/client.js';
 
 export async function getGlobalStats() {
   const [

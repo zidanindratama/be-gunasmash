@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ZodError, z } from 'zod';
+
 import { signUp, issueTokens, updateMyProfile } from './auth.service.js';
 import { passport } from './passport-local.js';
 import { authGuard } from '../common/auth/guards.js';
@@ -20,7 +21,7 @@ const baseCookieOptions = {
 
 const refreshCookieOptions = {
   ...baseCookieOptions,
-  sameSite: (isProduction ? 'lax' : 'none') as SameSiteString,
+  sameSite: (isProduction ? 'none' : 'lax') as SameSiteString,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 

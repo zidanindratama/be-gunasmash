@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ZodError, z } from 'zod';
+
 import {
   adminCheckIn,
   memberCheckIn,
@@ -14,13 +15,13 @@ import {
   listMemberSessions,
 } from './attendance.service.js';
 import { authGuard, rolesGuard } from '../common/auth/guards.js';
+import { ok } from '../common/http/response.js';
 import {
   AdminCheckInSchema,
   MemberCheckInSchema,
   SessionQuerySchema,
   CreateSessionSchema,
 } from '../common/validators/schemas.js';
-import { ok } from '../common/http/response.js';
 
 export const attendanceRouter = Router();
 

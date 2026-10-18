@@ -1,6 +1,8 @@
-import { PrismaClient, Role, AnnouncementType, AttendanceStatus } from '@prisma/client';
 import { faker } from '@faker-js/faker';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+
+import type { Role, AnnouncementType, AttendanceStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -9,6 +11,12 @@ const CONFIG = {
   ANNOUNCEMENTS_COUNT: 15,
   BLOGS_COUNT: 10,
   ATTENDANCE_RATE: 0.8,
+};
+
+const TEST_ACCOUNTS = {
+  admin: { name: 'GunaSmash Admin', email: 'admin@gmail.com' },
+  member: { name: 'GunaSmash Member', email: 'member@gmail.com' },
+  password: 'password',
 };
 
 function toTitleCase(str: string) {
@@ -46,18 +54,29 @@ async function main() {
   console.log('🧹 Database cleaned.');
 
   const passwordHash = await bcrypt.hash('password123', 10);
+  const testPasswordHash = await bcrypt.hash(TEST_ACCOUNTS.password, 10);
 
   const admin = await prisma.user.create({
     data: {
-      name: 'Super Admin',
-      email: 'admin@gunasmash.id',
-      password: passwordHash,
+      name: TEST_ACCOUNTS.admin.name,
+      email: TEST_ACCOUNTS.admin.email,
+      password: testPasswordHash,
       role: 'ADMIN',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
     },
   });
 
-  console.log(`👤 Created Admin: admin@gunasmash.id / password123`);
+  await prisma.user.create({
+    data: {
+      name: TEST_ACCOUNTS.member.name,
+      email: TEST_ACCOUNTS.member.email,
+      password: testPasswordHash,
+      role: 'MEMBER',
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=member',
+    },
+  });
+
+  console.log(`👤 Created test accounts: ${TEST_ACCOUNTS.admin.email}, ${TEST_ACCOUNTS.member.email}`);
 
   const usersData = Array.from({ length: CONFIG.USERS_COUNT }).map(() => {
     const firstName = faker.person.firstName();

@@ -7,7 +7,7 @@ import multer from 'multer';
 import { listUsers, getUser, updateUserRole, removeUserAuto, updateUser } from './users.service.js';
 import { authGuard, rolesGuard } from '../common/auth/guards.js';
 import { ok } from '../common/http/response.js';
-import { PromoteSchema, UserUpdateSchema } from '../common/validators/schemas.js';
+import { MongoIdSchema, PromoteSchema, UserUpdateSchema } from '../common/validators/schemas.js';
 import { prisma } from '../prisma/client.js';
 
 export const usersRouter = Router();
@@ -23,7 +23,8 @@ usersRouter.get('/', authGuard, rolesGuard(['ADMIN']), async (req, res, next) =>
 
 usersRouter.get('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
-    const data = await getUser(req.params.id as string);
+    const id = MongoIdSchema.parse(req.params.id);
+    const data = await getUser(id);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -32,9 +33,10 @@ usersRouter.get('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next)
 
 usersRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
+    const id = MongoIdSchema.parse(req.params.id);
     const dto = UserUpdateSchema.parse(req.body);
 
-    const data = await updateUser(req.params.id as string, dto);
+    const data = await updateUser(id, dto);
 
     res.json(ok(data));
   } catch (e) {
@@ -44,8 +46,9 @@ usersRouter.patch('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, nex
 
 usersRouter.patch('/:id/role', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
+    const id = MongoIdSchema.parse(req.params.id);
     const dto = PromoteSchema.parse(req.body);
-    const data = await updateUserRole(req.params.id as string, dto.role);
+    const data = await updateUserRole(id, dto.role);
     res.json(ok(data));
   } catch (e) {
     next(e);
@@ -54,13 +57,14 @@ usersRouter.patch('/:id/role', authGuard, rolesGuard(['ADMIN']), async (req, res
 
 usersRouter.delete('/:id', authGuard, rolesGuard(['ADMIN']), async (req, res, next) => {
   try {
+    const id = MongoIdSchema.parse(req.params.id);
     const u = (req as any).user || {};
     const actorId = u.id ?? u.sub ?? u.userId ?? u.uid;
     if (!actorId) {
       return res.status(401).json({ success: false, error: { message: 'Unauthorized' } });
     }
 
-    const result = await removeUserAuto(req.params.id as string, actorId);
+    const result = await removeUserAuto(id, actorId);
     res.json({ success: true, data: result });
   } catch (e: any) {
     if (e?.status)
