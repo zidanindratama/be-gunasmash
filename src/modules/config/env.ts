@@ -19,7 +19,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env) {
     CLOUDINARY_CLOUD_NAME: required('CLOUDINARY_CLOUD_NAME', source),
     CLOUDINARY_API_KEY: required('CLOUDINARY_API_KEY', source),
     CLOUDINARY_API_SECRET: required('CLOUDINARY_API_SECRET', source),
-    CORS_WHITELIST: source.CORS_WHITELIST || 'localhost,vercel.app',
+    CORS_WHITELIST:
+      source.CORS_WHITELIST || 'http://localhost:3000,http://127.0.0.1:3000',
   };
 }
 

@@ -19,7 +19,7 @@ test('loadEnv applies development defaults while preserving required values', ()
     ...requiredEnvironment,
     JWT_ACCESS_EXPIRES: '15m',
     JWT_REFRESH_EXPIRES: '7d',
-    CORS_WHITELIST: 'localhost,vercel.app',
+    CORS_WHITELIST: 'http://localhost:3000,http://127.0.0.1:3000',
   });
 });
 

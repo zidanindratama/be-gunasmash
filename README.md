@@ -1,284 +1,111 @@
-# 🏸 BE GunaSmash — Backend UKM Bulutangkis Gunadarma
+# Backend GunaSmash
 
-**(Express + TypeScript + Prisma + MongoDB)**
+API untuk sistem manajemen UKM Bulutangkis GunaSmash. Backend menggunakan Express, TypeScript, Prisma, dan MongoDB Atlas.
 
-Backend API untuk **GunaSmash**, sistem manajemen UKM Bulutangkis Universitas Gunadarma.
-Menyediakan fitur **autentikasi (JWT)**, **role-based access (RBAC)**, **pengumuman**, **absensi**, **blog**, **manajemen anggota**, **upload gambar**, dan **statistik aktivitas**.
+## Fitur
 
-Dibangun dengan **Express 5**, **TypeScript**, **Prisma (MongoDB)**, **Zod**, **Passport Local**, dan **Cloudinary**.
+- Pendaftaran, login, logout, dan pembaruan token dengan JWT.
+- Hak akses berdasarkan peran `ADMIN` dan `MEMBER`.
+- Pengelolaan pengumuman latihan dan acara.
+- Sesi absensi, check-in anggota, pencatatan manual oleh admin, rekap, dan ekspor CSV.
+- Pengelolaan artikel, tag, serta status terbit.
+- Pengelolaan anggota, termasuk impor dan ekspor CSV.
+- Upload gambar ke Cloudinary.
+- Statistik umum dan statistik kehadiran.
+- Validasi permintaan, pencatatan log, dan penanganan error.
 
----
+## Menjalankan di komputer lokal
 
-## 🌐 Links
+### Prasyarat
 
-| Link Type                 | URL                                                                                                                                                                          |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🟢 **Production**         | [https://be-gunasmash.vercel.app](https://be-gunasmash.vercel.app)                                                                                                           |
-| 📘 **API Docs (Postman)** | [https://documenter.getpostman.com/view/14021625/2sB3WpShAL#dokumentasi-api-gunasmash](https://documenter.getpostman.com/view/14021625/2sB3WpShAL#dokumentasi-api-gunasmash) |
-| 💻 **GitHub Repository**  | [https://github.com/zidanindratama/be-gunasmash](https://github.com/zidanindratama/be-gunasmash)                                                                             |
+- Node.js 20.9 atau lebih baru.
+- Akun dan database MongoDB Atlas.
+- Akun Cloudinary. Backend memerlukan kredensialnya saat dijalankan; fitur upload menggunakan layanan ini.
 
-> Tip: Base path API di production adalah `/api` (contoh: `https://be-gunasmash.vercel.app/api/auth/me`)
+### Instalasi
 
----
+Dari folder `be-gunasmash`, jalankan:
 
-## ⚡ Quick Check (cURL)
-
-```bash
-# Health check (root)
-curl -s https://be-gunasmash.vercel.app/ | jq .
-
-# Example: daftar pengumuman (public)
-curl -s https://be-gunasmash.vercel.app/api/announcements | jq .
+```powershell
+npm ci
+Copy-Item .env.example .env
 ```
 
----
-
-## ✨ Fitur Utama
-
-- 🔑 **Autentikasi & Autorisasi**
-  - Sign-up / Sign-in dengan Passport Local
-  - JWT Access Token & Refresh Token
-  - Endpoint `/auth/me` & logout
-
-- 🧑‍🤝‍🧑 **RBAC** — Role `ADMIN` dan `MEMBER`
-- 📢 **Pengumuman (Announcements)** — CRUD lengkap + pencarian, filter, sorting, dan paginasi
-- 🕓 **Absensi (Attendance)** — Check-in anggota, check-in admin, rekap sesi, dan ekspor CSV
-- 📰 **Blog** — CRUD, tag, status publish/unpublish
-- 👥 **Anggota (Users)** — List/get user, ubah role, hapus, import/export CSV
-- ☁️ **Upload Gambar** — Cloudinary (multipart/form-data)
-- 📊 **Statistik (Stats)** — Data global & statistik kehadiran per sesi
-- 🧩 **Developer Experience** — Zod validation, error handler, CORS, Helmet, Compression, Morgan logging
-- 🌱 **Seeder** — Generate data dummy otomatis (user, pengumuman, blog, absensi)
-
----
-
-## 🧱 Teknologi
-
-| Kategori      | Teknologi                                 |
-| ------------- | ----------------------------------------- |
-| **Runtime**   | Node.js (TypeScript)                      |
-| **Framework** | Express 5                                 |
-| **ORM**       | Prisma (MongoDB)                          |
-| **Auth**      | Passport Local + JWT (HS256)              |
-| **Validasi**  | Zod                                       |
-| **Upload**    | Cloudinary SDK                            |
-| **CSV**       | fast-csv, json2csv                        |
-| **Lainnya**   | Helmet, compression, cors, morgan, multer |
-
----
-
-## 📁 Struktur Proyek
-
-```
-src
-│  app.ts
-│  index.ts
-│  routes.ts
-│
-└─ modules
-   ├─ announcements     # Pengumuman
-   ├─ attendance        # Absensi
-   ├─ auth              # Autentikasi
-   ├─ blogs             # Blog
-   ├─ common            # Utilitas umum (auth, validator, middleware, dll)
-   ├─ config            # Konfigurasi env & CORS
-   ├─ prisma            # Koneksi Prisma
-   ├─ stats             # Statistik
-   ├─ uploads           # Upload ke Cloudinary
-   └─ users             # CRUD & import/export anggota
-```
-
----
-
-## ⚙️ Menjalankan Proyek
-
-### 1️⃣ Prasyarat
-
-- Node.js ≥ 18
-- MongoDB (Atlas disarankan)
-- Akun Cloudinary
-
-### 2️⃣ Instalasi
-
-```bash
-npm install
-```
-
-### 3️⃣ Konfigurasi `.env`
+Buka `.env` dan isi nilai untuk MongoDB Atlas, secret JWT, dan Cloudinary. Contoh formatnya:
 
 ```dotenv
 NODE_ENV=development
 PORT=4000
-
-DATABASE_URL="mongodb+srv://<user>:<pass>@<cluster>/<db>?appName=<app>"
-
-JWT_ACCESS_SECRET=ubah-ini
-JWT_REFRESH_SECRET=ubah-ini-juga
+DATABASE_URL="mongodb+srv://<username>:<password>@<cluster>/<database>?appName=<app>"
+JWT_ACCESS_SECRET=ganti-dengan-secret-acak-yang-panjang
+JWT_REFRESH_SECRET=ganti-dengan-secret-acak-yang-berbeda
 JWT_ACCESS_EXPIRES=15m
 JWT_REFRESH_EXPIRES=7d
-
 CLOUDINARY_CLOUD_NAME=nama-cloud
 CLOUDINARY_API_KEY=api-key
 CLOUDINARY_API_SECRET=api-secret
-
-CORS_WHITELIST=localhost,vercel.app
-
-SEED=123
-SEED_USERS=20
-SEED_ANNOUNCEMENTS=20
-SEED_BLOGS=20
+CORS_WHITELIST=http://localhost:3000,http://127.0.0.1:3000
 ```
 
-> ⚠️ Jangan commit `.env` — simpan **`.env.example`** saja.
+Pastikan alamat IP komputer diizinkan di pengaturan Network Access MongoDB Atlas. Jangan commit `.env` atau membagikan secret. `.env.example` hanya berisi contoh.
 
-### 4️⃣ Generate Prisma Client
+Keterangan variabel:
 
-```bash
+- `DATABASE_URL`: alamat koneksi database MongoDB Atlas.
+- `JWT_ACCESS_SECRET` dan `JWT_REFRESH_SECRET`: secret berbeda untuk token akses dan refresh.
+- `JWT_ACCESS_EXPIRES` dan `JWT_REFRESH_EXPIRES`: masa berlaku token.
+- `CLOUDINARY_*`: kredensial untuk upload gambar.
+- `CORS_WHITELIST`: daftar origin frontend yang boleh mengakses API, dipisahkan koma. Tambahkan origin frontend jika alamat atau port-nya berbeda.
+- `PORT`: port backend; jika diubah, sesuaikan `NEXT_PUBLIC_API_URL` di frontend.
+
+### Siapkan dan jalankan backend
+
+```powershell
 npm run db:gen
+npm run dev
 ```
 
-### 5️⃣ Jalankan Seeder (opsional)
+API berjalan di [http://localhost:4000](http://localhost:4000). Root API adalah health check. Endpoint fitur menggunakan awalan `/api`, misalnya [http://localhost:4000/api/announcements](http://localhost:4000/api/announcements).
 
-```bash
+Untuk membuat data contoh, jalankan:
+
+```powershell
 npm run seed
 ```
 
-Seeder otomatis membuat:
+Seeder menghapus data yang sudah ada di database sebelum membuat data contoh. Gunakan hanya pada database development yang datanya boleh dihapus. Akun contoh yang dibuat adalah `admin@gmail.com` dan `member@gmail.com`, keduanya memakai password `password`.
 
-- Admin default (`Muhamad Zidan Indratama`)
-- Data user acak
-- Pengumuman latihan rutin (Rabu & Minggu)
-- Blog dummy
-- Sesi absensi & data kehadiran
+## Endpoint utama
 
-### 6️⃣ Jalankan Server
+Semua respons sukses menggunakan bentuk `{ "success": true, "data": ... }`. Akses ke endpoint tertentu memerlukan token login dan peran yang sesuai.
+
+| Fitur | Endpoint utama |
+| --- | --- |
+| Autentikasi | `POST /api/auth/sign-up`, `POST /api/auth/sign-in`, `POST /api/auth/refresh`, `DELETE /api/auth/logout`, `GET /api/auth/me` |
+| Pengumuman | `GET /api/announcements`, `GET /api/announcements/:id`; admin dapat `POST`, `PATCH`, dan `DELETE` |
+| Absensi | `GET /api/attendances`, `POST /api/attendances`, `POST /api/attendances/check-in`; admin dapat mengelola sesi dan check-in anggota |
+| Anggota | `GET /api/users`, `GET /api/users/:id`; admin dapat mengubah data/peran, menghapus, impor, dan ekspor CSV |
+| Blog | `GET /api/blogs`, `GET /api/blogs/:slug`; admin dapat membuat, mengubah, dan menghapus artikel |
+| Upload | `POST /api/uploads/image` untuk mengunggah gambar ke Cloudinary |
+| Statistik | `GET /api/stats` dan `GET /api/stats/attendance` untuk admin |
+
+## Perintah yang tersedia
 
 ```bash
-npm run dev                   # development
-npm run build && npm start    # production
+npm run dev           # Jalankan server pengembangan
+npm run build         # Buat build produksi
+npm start             # Jalankan build produksi
+npm run db:gen        # Generate Prisma Client
+npm run seed          # Hapus data lama dan isi database dengan data contoh
+npm test              # Jalankan unit test
+npm run lint          # Periksa kode dengan ESLint
 ```
 
-Akses di **[http://localhost:4000](http://localhost:4000)**
+## Menjalankan bersama frontend
 
----
+1. Jalankan backend pada port `4000`.
+2. Pada folder frontend, salin `.env.example` menjadi `.env.local`.
+3. Pastikan `NEXT_PUBLIC_API_URL=http://localhost:4000/api` dan origin frontend tercantum di `CORS_WHITELIST`.
+4. Jalankan frontend dengan `npm run dev` dari folder `fe-gunasmash`.
 
-## 📦 API Overview
-
-### Base URL
-
-```
-http://localhost:4000/api
-```
-
-### Format Respons
-
-```json
-{ "success": true, "data": <payload> }
-{ "success": false, "error": { "message": "Pesan error" } }
-```
-
----
-
-## 📚 Endpoint Utama
-
-### 🔑 Auth (`/auth`)
-
-| Method   | Endpoint   | Deskripsi                        |
-| -------- | ---------- | -------------------------------- |
-| `POST`   | `/sign-up` | Registrasi user baru             |
-| `POST`   | `/sign-in` | Login & set cookie refresh token |
-| `POST`   | `/refresh` | Refresh access token             |
-| `DELETE` | `/logout`  | Logout & hapus cookie            |
-| `GET`    | `/me`      | Info user login                  |
-
-### 👥 Users (`/users`) — hanya `ADMIN`
-
-- `GET /` — List user
-- `GET /:id` — Detail user
-- `PATCH /:id/role` — Ubah role
-- `DELETE /:id` — Hapus user
-- `POST /import` — Import CSV (`name,email,password?`)
-- `GET /export/csv` — Export CSV
-
-### 📢 Announcements (`/announcements`)
-
-- `GET /` — List pengumuman
-- `GET /:id` — Detail pengumuman
-- `POST /` (ADMIN) — Tambah pengumuman
-- `PATCH /:id` (ADMIN) — Edit pengumuman
-- `DELETE /:id` (ADMIN) — Hapus pengumuman
-
-### 🕓 Attendance (`/attendance`)
-
-- `POST /check-in` — Check-in anggota
-- `POST /admin/check-in` — Check-in manual (ADMIN)
-- `GET /session/summary` — Rekap kehadiran sesi
-- `GET /session/export` — Ekspor CSV kehadiran
-
-### 📰 Blogs (`/blogs`)
-
-- `GET /` — List blog
-- `GET /:id` — Detail blog
-- `POST /` (ADMIN) — Tambah blog
-- `PATCH /:id` (ADMIN) — Edit blog
-- `DELETE /:id` (ADMIN) — Hapus blog
-
-### ☁️ Uploads (`/uploads`)
-
-- `POST /image` (auth) — Upload gambar ke Cloudinary
-
-### 📊 Stats (`/stats`)
-
-- `GET /` — Statistik global
-- `GET /attendance?announcementId=...&date=YYYY-MM-DD` — Statistik kehadiran per sesi
-
----
-
-## 🗃️ Skema Database
-
-- `User` → Data anggota (`ADMIN` / `MEMBER`)
-- `Announcement` → Jadwal latihan
-- `Blog` → Artikel/berita klub
-- `AttendanceSession` → Sesi latihan per tanggal
-- `Attendance` → Data kehadiran per user
-
----
-
-## 🧪 Format CSV
-
-| Jenis          | Header                 |
-| -------------- | ---------------------- |
-| Import User    | `name,email,password?` |
-| Export User    | `id,name,email,role`   |
-| Export Absensi | `type,name,email`      |
-
----
-
-## 📜 NPM Script
-
-```jsonc
-{
-  "dev": "cross-env NODE_ENV=development tsx watch src/index.ts",
-  "build": "rimraf dist && tsc -p tsconfig.json",
-  "start": "node dist/index.js",
-  "lint": "eslint . --ext .ts",
-  "format": "prettier --write .",
-  "db:gen": "prisma generate",
-  "seed": "tsx prisma/seed.ts",
-}
-```
-
----
-
-## 👨‍💻 Pengembang
-
-**Muhamad Zidan Indratama** — Full-Stack Web Developer (Universitas Gunadarma)
-
-- 📧 [zidanindratama03@gmail.com](mailto:zidanindratama03@gmail.com)
-- 🌐 [zidanindratama.vercel.app](https://zidanindratama.vercel.app)
-
----
-
-## 📝 Lisensi
-
-**ISC License** — bebas digunakan & dimodifikasi untuk kebutuhan internal kampus/organisasi.
+Untuk deployment, atur variabel environment yang sama di hosting masing-masing aplikasi. Aplikasi tidak membutuhkan Vercel; URL API, URL website, dan origin yang diizinkan dapat disesuaikan lewat environment.
