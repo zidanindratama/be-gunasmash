@@ -41,7 +41,7 @@ async function waitForResponse(handler: any, req: unknown, res: any, next: (erro
 
 test('sign-up route validates input and returns access token plus safe user with refresh cookie', async (t) => {
   const user = {
-    id: 'u-1', name: 'Zidan', email: 'zidan@example.com', role: 'MEMBER', password: 'hashed',
+    id: 'u-1', name: 'Andi Pratama', email: 'andi@example.com', role: 'MEMBER', password: 'hashed',
   };
   replaceMethod(prisma.user, 'findUnique', async () => null, t);
   replaceMethod(prisma.user, 'create', async () => user, t);
@@ -50,7 +50,7 @@ test('sign-up route validates input and returns access token plus safe user with
   const errors: unknown[] = [];
 
   await routeHandler('/sign-up', 'post')(
-    { body: { name: 'Zidan', email: user.email, password: 'secret1' } }, res,
+    { body: { name: 'Andi Pratama', email: user.email, password: 'secret1' } }, res,
     (error: unknown) => errors.push(error),
   );
 

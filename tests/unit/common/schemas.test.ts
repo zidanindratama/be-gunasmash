@@ -19,9 +19,9 @@ import {
 } from '../../../src/modules/common/validators/schemas.js';
 
 test('sign-up and sign-in schemas normalize email and reject invalid credentials', () => {
-  assert.equal(SignUpSchema.parse({ name: '  Zidan ', email: ' zidan@example.com ', password: 'secret1' }).name, 'Zidan');
-  assert.equal(SignUpSchema.parse({ name: 'Zidan', email: ' zidan@example.com ', password: 'secret1' }).email, 'zidan@example.com');
-  assert.equal(SignInSchema.parse({ email: ' zidan@example.com ', password: 'secret1' }).email, 'zidan@example.com');
+  assert.equal(SignUpSchema.parse({ name: '  Andi Pratama ', email: ' andi@example.com ', password: 'secret1' }).name, 'Andi Pratama');
+  assert.equal(SignUpSchema.parse({ name: 'Andi Pratama', email: ' andi@example.com ', password: 'secret1' }).email, 'andi@example.com');
+  assert.equal(SignInSchema.parse({ email: ' andi@example.com ', password: 'secret1' }).email, 'andi@example.com');
   assert.equal(SignUpSchema.safeParse({ name: 'A', email: 'bad', password: '123' }).success, false);
   assert.equal(SignInSchema.safeParse({ email: 'valid@example.com', password: '123' }).success, false);
 });

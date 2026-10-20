@@ -73,7 +73,7 @@ Untuk membuat data contoh, jalankan:
 npm run seed
 ```
 
-Seeder menghapus data yang sudah ada di database sebelum membuat data contoh. Gunakan hanya pada database development yang datanya boleh dihapus. Akun contoh yang dibuat adalah `admin@gmail.com` dan `member@gmail.com`, keduanya memakai password `password`.
+Seeder menghapus data yang sudah ada di database sebelum membuat data contoh. Gunakan hanya pada database development yang datanya boleh dihapus. Akun contoh yang dibuat adalah Andi Pratama (`admin@gmail.com`) dan Siti Aisyah (`member@gmail.com`), keduanya memakai password `password`.
 
 ## Endpoint utama
 
@@ -108,4 +108,134 @@ npm run lint          # Periksa kode dengan ESLint
 3. Pastikan `NEXT_PUBLIC_API_URL=http://localhost:4000/api` dan origin frontend tercantum di `CORS_WHITELIST`.
 4. Jalankan frontend dengan `npm run dev` dari folder `fe-gunasmash`.
 
-Untuk deployment, atur variabel environment yang sama di hosting masing-masing aplikasi. Aplikasi tidak membutuhkan Vercel; URL API, URL website, dan origin yang diizinkan dapat disesuaikan lewat environment.
+## Deploy backend ke Vercel lewat terminal
+
+Langkah ini mengirim folder backend langsung dari komputer ke Vercel lewat CLI. Tidak perlu menghubungkan GitHub atau menjalankan `git push`. Jalankan semua perintah dari folder `be-gunasmash`, tempat `package.json` dan `vercel.json` berada.
+
+### Prasyarat
+
+- Akun Vercel.
+- Node.js 20.9 atau lebih baru.
+- Database MongoDB Atlas yang bisa diakses dari backend yang dideploy.
+- Kredensial Cloudinary.
+- URL frontend production yang akan menggunakan API ini.
+
+### 1. Periksa backend sebelum deploy
+
+Pastikan `.env` lokal sudah diisi dan backend dapat dibuat serta dites:
+
+```powershell
+npm ci
+npm test
+npm run build
+```
+
+Perintah build tidak mengunggah aplikasi. Ini membantu menemukan error TypeScript atau konfigurasi sebelum deploy.
+
+### 2. Login dan buat tautan project Vercel
+
+Jalankan:
+
+```powershell
+npx vercel login
+npx vercel link
+```
+
+Login akan membuka proses autentikasi Vercel. Saat membuat tautan, pilih scope akun atau tim yang benar. Jika project `be-gunasmash` sudah ada di Vercel, pilih project tersebut. Jika ini benar-benar deploy pertama dan project belum ada, buat project baru bernama `be-gunasmash`. Untuk direktori project, gunakan folder saat ini (`./`). Perintah ini membuat folder lokal `.vercel` yang menyimpan ID project; jangan edit atau commit folder tersebut.
+
+### 3. Tambahkan environment production
+
+Tambahkan variabel yang diwajibkan backend satu per satu:
+
+```powershell
+npx vercel env add DATABASE_URL production
+npx vercel env add JWT_ACCESS_SECRET production
+npx vercel env add JWT_REFRESH_SECRET production
+npx vercel env add CLOUDINARY_CLOUD_NAME production
+npx vercel env add CLOUDINARY_API_KEY production
+npx vercel env add CLOUDINARY_API_SECRET production
+npx vercel env add CORS_WHITELIST production
+```
+
+CLI akan meminta nilai setiap variabel. Masukkan URI MongoDB Atlas, dua secret JWT yang berbeda, kredensial Cloudinary, dan origin frontend. Untuk `CORS_WHITELIST`, gunakan origin lengkap tanpa path, misalnya `https://fe-gunasmash.vercel.app`. Pisahkan beberapa origin dengan koma, misalnya `https://fe-gunasmash.vercel.app,http://localhost:3000`. Masukkan hanya origin yang memang perlu mengakses API.
+
+`JWT_ACCESS_EXPIRES` dan `JWT_REFRESH_EXPIRES` bersifat opsional; jika tidak diatur, backend memakai `15m` dan `7d`. Jangan menulis secret langsung di perintah terminal atau memasukkannya ke Git. Cek nama variabel yang sudah tersimpan dengan:
+
+```powershell
+npx vercel env ls production
+```
+
+Perintah ini menampilkan daftar variabel, bukan nilai rahasianya. Environment variable di Vercel harus ditambahkan ke environment yang sesuai. Panduan ini menyiapkan `production`; preview deployment membutuhkan salinan variabel di environment `preview` juga. Lihat [dokumentasi environment Vercel CLI](https://vercel.com/docs/cli/env).
+
+Jika ingin memakai preview setelah production aktif, tambahkan variabel yang sama untuk environment `preview`. Sebaiknya gunakan database Atlas development terpisah agar pengujian tidak mengubah data production:
+
+```powershell
+npx vercel env add DATABASE_URL preview
+npx vercel env add JWT_ACCESS_SECRET preview
+npx vercel env add JWT_REFRESH_SECRET preview
+npx vercel env add CLOUDINARY_CLOUD_NAME preview
+npx vercel env add CLOUDINARY_API_KEY preview
+npx vercel env add CLOUDINARY_API_SECRET preview
+npx vercel env add CORS_WHITELIST preview
+```
+
+Nilai `CORS_WHITELIST` untuk preview harus mengizinkan origin frontend preview yang akan digunakan.
+
+Pada project Vercel yang benar-benar baru, deploy pertama akan menjadi production walaupun perintahnya hanya `npx vercel`. Setelah deployment production pertama ada, `npx vercel` membuat deployment preview. Karena itu panduan ini memakai `npx vercel --prod` untuk deploy pertama dengan sengaja. Rincian perilaku ini ada di [panduan deploy CLI Vercel](https://vercel.com/docs/projects/deploy-from-cli).
+
+Pastikan MongoDB Atlas mengizinkan koneksi dari backend production. Jika koneksi database gagal setelah deploy, periksa bagian Network Access dan kredensial database di `DATABASE_URL`. Jangan gunakan akun database dengan hak akses lebih besar dari yang dibutuhkan aplikasi.
+
+### 4. Deploy production
+
+Untuk deploy pertama, jalankan perintah ini setelah menambahkan environment production:
+
+```powershell
+npx vercel --prod
+```
+
+Vercel akan menampilkan URL deployment. Project ini menggunakan Express; Vercel mengenali entry point `src/index.ts` dan menjalankan aplikasi sebagai function. [Panduan Express di Vercel](https://vercel.com/docs/frameworks/backend/express)
+
+### 5. Periksa deployment
+
+Gunakan domain production yang ditampilkan Vercel. Root API mengembalikan status service, sedangkan daftar pengumuman menguji koneksi ke database:
+
+```powershell
+Invoke-RestMethod https://<domain-backend>/
+Invoke-RestMethod https://<domain-backend>/api/announcements
+```
+
+Ganti `<domain-backend>` dengan domain deployment, misalnya `be-gunasmash.vercel.app`. Jika deployment gagal atau mengembalikan error, lihat log:
+
+```powershell
+npx vercel logs --environment production --level error --since 5m
+```
+
+### 6. Hubungkan frontend ke backend production
+
+Pada environment production frontend, atur:
+
+```dotenv
+NEXT_PUBLIC_API_URL=https://<domain-backend>/api
+NEXT_PUBLIC_APP_URL=https://<domain-frontend>
+```
+
+Pastikan origin frontend production yang sebenarnya juga tercantum di `CORS_WHITELIST` backend. Jika nilai environment diubah, buat deployment baru agar perubahan dipakai:
+
+```powershell
+npx vercel --prod
+```
+
+### Deploy berikutnya
+
+Setelah project terhubung, jalankan perintah dari folder backend yang sama:
+
+```powershell
+npx vercel          # Buat deployment preview untuk diuji
+npx vercel --prod   # Deploy versi yang siap ke production
+```
+
+Preview memakai environment `preview`; tambahkan variabel yang diperlukan ke environment tersebut sebelum membuat preview. Perintah CLI, project linking, dan proses deploy dijelaskan lebih lanjut di [panduan deploy Vercel dari CLI](https://vercel.com/docs/projects/deploy-from-cli).
+
+Untuk mengganti nilai environment yang sudah dibuat, gunakan `npx vercel env update NAMA production`, lalu deploy ulang dengan `npx vercel --prod` agar rilis baru memakai nilai tersebut.
+
+Vercel adalah salah satu pilihan hosting. Backend juga dapat dijalankan atau dideploy di layanan Node.js lain dengan mengatur variabel environment yang sama.

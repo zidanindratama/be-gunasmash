@@ -91,6 +91,13 @@ test('seedDatabase clears and repopulates all models using injected database and
   ]);
   assert.deepEqual(hashes, [['password123', 10], ['password', 10]]);
   assert.equal(db.users.length, 22);
+  assert.deepEqual(
+    db.users.slice(0, 2).map(({ name, email, role }) => ({ name, email, role })),
+    [
+      { name: 'Andi Pratama', email: 'admin@gmail.com', role: 'ADMIN' },
+      { name: 'Siti Aisyah', email: 'member@gmail.com', role: 'MEMBER' },
+    ],
+  );
   assert.equal(db.users.filter((user) => user.role === 'ADMIN').length, 1);
   assert.equal(db.users.filter((user) => user.role === 'MEMBER').length, 21);
   assert.equal(db.announcements.length, 15);

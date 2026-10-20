@@ -17,8 +17,8 @@ const CONFIG = {
 };
 
 const TEST_ACCOUNTS = {
-  admin: { name: 'GunaSmash Admin', email: 'admin@gmail.com' },
-  member: { name: 'GunaSmash Member', email: 'member@gmail.com' },
+  admin: { name: 'Andi Pratama', email: 'admin@gmail.com' },
+  member: { name: 'Siti Aisyah', email: 'member@gmail.com' },
   password: 'password',
 };
 

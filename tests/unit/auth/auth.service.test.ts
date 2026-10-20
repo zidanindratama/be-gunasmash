@@ -29,8 +29,8 @@ function stubMethod<T extends object>(
 test('signUp checks email, hashes the password, creates a member and returns safe user data', async (t) => {
   const created = {
     id: '507f1f77bcf86cd799439011',
-    name: 'Zidan',
-    email: 'zidan@example.com',
+    name: 'Andi Pratama',
+    email: 'andi@example.com',
     role: 'MEMBER' as const,
     password: 'hashed-password',
   };
@@ -38,12 +38,12 @@ test('signUp checks email, hashes the password, creates a member and returns saf
   const hash = stubMethod(t, bcrypt as any, 'hash', async () => 'hashed-password');
   const create = stubMethod(t, prisma.user as any, 'create', async () => created);
 
-  const result = await signUp({ name: 'Zidan', email: created.email, password: 'plain-password' });
+  const result = await signUp({ name: 'Andi Pratama', email: created.email, password: 'plain-password' });
 
   assert.deepEqual(findUnique.calls[0]?.arguments[0], { where: { email: created.email } });
   assert.deepEqual(hash.calls[0]?.arguments, ['plain-password', 10]);
   assert.deepEqual(create.calls[0]?.arguments[0], {
-    data: { name: 'Zidan', email: created.email, password: 'hashed-password' },
+    data: { name: 'Andi Pratama', email: created.email, password: 'hashed-password' },
   });
   assert.deepEqual(result.user, { id: created.id, name: created.name, email: created.email, role: 'MEMBER' });
   assert.equal('password' in result.user, false);
